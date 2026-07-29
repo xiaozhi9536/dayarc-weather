@@ -6,9 +6,8 @@
 <title>時鐘與一週天氣</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <style>
   html, body { margin:0; padding:0; }
   * { box-sizing: border-box; }
@@ -54,41 +53,69 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-presets="react">
+<script>
 const { useState, useEffect, useMemo, useCallback } = React;
-
-const Icon = ({ children, size = 20, color = "currentColor", strokeWidth = 1.8, style }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
-       strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={style}>{children}</svg>
+const Icon = ({ children, size = 20, color = "currentColor", strokeWidth = 1.8, style }) => /* @__PURE__ */ React.createElement(
+  "svg",
+  {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: color,
+    strokeWidth,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    style
+  },
+  children
 );
-const Sun = (p) => <Icon {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></Icon>;
-const Moon = (p) => <Icon {...p}><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" /></Icon>;
-const Cloud = (p) => <Icon {...p}><path d="M6.5 19a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8H6.5z" /></Icon>;
-const CloudSun = (p) => <Icon {...p}><path d="M9.5 3v1.5M4.4 6.4l1.1 1.1M16.6 6.4l-1.1 1.1M3 12h1.5" /><path d="M6.5 20a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.7A3.6 3.6 0 0 1 16.5 17H6.5z" /></Icon>;
-const CloudMoon = (p) => <Icon {...p}><path d="M17 5.5a4.2 4.2 0 0 1-3.8 4.2" /><path d="M6.5 20a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.7A3.6 3.6 0 0 1 16.5 17H6.5z" /></Icon>;
-const CloudRain = (p) => <Icon {...p}><path d="M6.5 16.5a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.5A3.6 3.6 0 0 1 16.5 14H6.5z" /><path d="M8 18.5l-1 2M12 18.5l-1 2M16 18.5l-1 2" /></Icon>;
-const CloudDrizzle = (p) => <Icon {...p}><path d="M6.5 15.5a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.4A3.6 3.6 0 0 1 16.5 13H6.5z" /><path d="M8 17.5v1.5M12 17.5v1.5M16 17.5v1.5M8 20.5v.5M16 20.5v.5" /></Icon>;
-const CloudSnow = (p) => <Icon {...p}><path d="M6.5 15.5a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.4A3.6 3.6 0 0 1 16.5 13H6.5z" /><path d="M8 18l.01 0M12 19l.01 0M16 18l.01 0M8 20.5l.01 0M16 20.5l.01 0" /></Icon>;
-const CloudFog = (p) => <Icon {...p}><path d="M6.5 12.5a4 4 0 0 1-.2-8 5.5 5.5 0 0 1 10.6-.8A3.6 3.6 0 0 1 16.5 11" /><path d="M4 15h16M4 18h16M6 21h12" /></Icon>;
-const CloudLightning = (p) => <Icon {...p}><path d="M6.5 14.5a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.5A3.6 3.6 0 0 1 16.5 13H6.5z" /><path d="M12.5 15l-2.5 4h3l-1.5 3.5" /></Icon>;
-const Droplets = (p) => <Icon {...p}><path d="M12 3s5 5.5 5 9.5a5 5 0 0 1-10 0C7 8.5 12 3 12 3z" /></Icon>;
-const Wind = (p) => <Icon {...p}><path d="M3 8h11a2.5 2.5 0 1 0-2.5-2.5M3 12h14a2.5 2.5 0 1 1-2.5 2.5M3 16h8" /></Icon>;
-const Gauge = (p) => <Icon {...p}><path d="M4 15a8 8 0 1 1 16 0M12 15l3-4" /></Icon>;
-const MapPin = (p) => <Icon {...p}><path d="M12 21s7-6.6 7-11.5A7 7 0 0 0 5 9.5C5 14.4 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.3" /></Icon>;
-const Loader2 = (p) => <Icon {...p}><path d="M12 2a10 10 0 1 0 10 10" /></Icon>;
-const RotateCcw = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 3-6.7M3 5v5h5" /></Icon>;
-
+const Sun = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "4" }), /* @__PURE__ */ React.createElement("path", { d: "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" }));
+const Moon = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" }));
+const Cloud = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M6.5 19a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8H6.5z" }));
+const CloudSun = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M9.5 3v1.5M4.4 6.4l1.1 1.1M16.6 6.4l-1.1 1.1M3 12h1.5" }), /* @__PURE__ */ React.createElement("path", { d: "M6.5 20a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.7A3.6 3.6 0 0 1 16.5 17H6.5z" }));
+const CloudMoon = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M17 5.5a4.2 4.2 0 0 1-3.8 4.2" }), /* @__PURE__ */ React.createElement("path", { d: "M6.5 20a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.7A3.6 3.6 0 0 1 16.5 17H6.5z" }));
+const CloudRain = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M6.5 16.5a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.5A3.6 3.6 0 0 1 16.5 14H6.5z" }), /* @__PURE__ */ React.createElement("path", { d: "M8 18.5l-1 2M12 18.5l-1 2M16 18.5l-1 2" }));
+const CloudDrizzle = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M6.5 15.5a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.4A3.6 3.6 0 0 1 16.5 13H6.5z" }), /* @__PURE__ */ React.createElement("path", { d: "M8 17.5v1.5M12 17.5v1.5M16 17.5v1.5M8 20.5v.5M16 20.5v.5" }));
+const CloudSnow = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M6.5 15.5a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.4A3.6 3.6 0 0 1 16.5 13H6.5z" }), /* @__PURE__ */ React.createElement("path", { d: "M8 18l.01 0M12 19l.01 0M16 18l.01 0M8 20.5l.01 0M16 20.5l.01 0" }));
+const CloudFog = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M6.5 12.5a4 4 0 0 1-.2-8 5.5 5.5 0 0 1 10.6-.8A3.6 3.6 0 0 1 16.5 11" }), /* @__PURE__ */ React.createElement("path", { d: "M4 15h16M4 18h16M6 21h12" }));
+const CloudLightning = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M6.5 14.5a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6-1.5A3.6 3.6 0 0 1 16.5 13H6.5z" }), /* @__PURE__ */ React.createElement("path", { d: "M12.5 15l-2.5 4h3l-1.5 3.5" }));
+const Droplets = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12 3s5 5.5 5 9.5a5 5 0 0 1-10 0C7 8.5 12 3 12 3z" }));
+const Wind = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M3 8h11a2.5 2.5 0 1 0-2.5-2.5M3 12h14a2.5 2.5 0 1 1-2.5 2.5M3 16h8" }));
+const Gauge = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M4 15a8 8 0 1 1 16 0M12 15l3-4" }));
+const MapPin = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12 21s7-6.6 7-11.5A7 7 0 0 0 5 9.5C5 14.4 12 21 12 21z" }), /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "9.5", r: "2.3" }));
+const Loader2 = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M12 2a10 10 0 1 0 10 10" }));
+const RotateCcw = (p) => /* @__PURE__ */ React.createElement(Icon, { ...p }, /* @__PURE__ */ React.createElement("path", { d: "M3 12a9 9 0 1 0 3-6.7M3 5v5h5" }));
 const WMO_TEXT = {
-  0: "晴朗", 1: "晴時多雲", 2: "多雲", 3: "陰天",
-  45: "有霧", 48: "霧淞",
-  51: "毛毛雨", 53: "毛毛雨", 55: "毛毛雨", 56: "凍雨", 57: "凍雨",
-  61: "小雨", 63: "中雨", 65: "大雨", 66: "凍雨", 67: "凍雨",
-  71: "小雪", 73: "中雪", 75: "大雪", 77: "陣雪粒",
-  80: "短暫陣雨", 81: "短暫陣雨", 82: "強陣雨",
-  85: "陣雪", 86: "強陣雪",
-  95: "雷雨", 96: "雷雨挾冰雹", 99: "強雷雨挾冰雹",
+  0: "\u6674\u6717",
+  1: "\u6674\u6642\u591A\u96F2",
+  2: "\u591A\u96F2",
+  3: "\u9670\u5929",
+  45: "\u6709\u9727",
+  48: "\u9727\u6DDE",
+  51: "\u6BDB\u6BDB\u96E8",
+  53: "\u6BDB\u6BDB\u96E8",
+  55: "\u6BDB\u6BDB\u96E8",
+  56: "\u51CD\u96E8",
+  57: "\u51CD\u96E8",
+  61: "\u5C0F\u96E8",
+  63: "\u4E2D\u96E8",
+  65: "\u5927\u96E8",
+  66: "\u51CD\u96E8",
+  67: "\u51CD\u96E8",
+  71: "\u5C0F\u96EA",
+  73: "\u4E2D\u96EA",
+  75: "\u5927\u96EA",
+  77: "\u9663\u96EA\u7C92",
+  80: "\u77ED\u66AB\u9663\u96E8",
+  81: "\u77ED\u66AB\u9663\u96E8",
+  82: "\u5F37\u9663\u96E8",
+  85: "\u9663\u96EA",
+  86: "\u5F37\u9663\u96EA",
+  95: "\u96F7\u96E8",
+  96: "\u96F7\u96E8\u633E\u51B0\u96F9",
+  99: "\u5F37\u96F7\u96E8\u633E\u51B0\u96F9"
 };
-
 function wmoIcon(code, isDay) {
   if (code === 0) return isDay ? Sun : Moon;
   if (code === 1 || code === 2) return isDay ? CloudSun : CloudMoon;
@@ -96,18 +123,16 @@ function wmoIcon(code, isDay) {
   if (code === 45 || code === 48) return CloudFog;
   if (code >= 80 && code <= 82) return CloudRain;
   if (code >= 51 && code <= 67) return CloudDrizzle;
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return CloudSnow;
+  if (code >= 71 && code <= 77 || code === 85 || code === 86) return CloudSnow;
   if (code >= 95) return CloudLightning;
   return Cloud;
 }
-
 function getTheme(hour) {
-  if (hour >= 5 && hour < 8) return { name: "晨", from: "#FFC896", to: "#FFE8D6", accent: "#C6572E", text: "#4A2E1E", sub: "#8A5A3C", card: "rgba(255,255,255,0.55)" };
-  if (hour >= 8 && hour < 17) return { name: "日", from: "#6BB9E8", to: "#DFF3FF", accent: "#1D6FA5", text: "#173247", sub: "#3E6883", card: "rgba(255,255,255,0.55)" };
-  if (hour >= 17 && hour < 19) return { name: "昏", from: "#FF9166", to: "#4A3B6B", accent: "#FF6F3C", text: "#FFF3EA", sub: "#F2C9B5", card: "rgba(255,255,255,0.14)" };
-  return { name: "夜", from: "#141A38", to: "#33396E", accent: "#93A3FF", text: "#EDEFFF", sub: "#A6ADD9", card: "rgba(255,255,255,0.08)" };
+  if (hour >= 5 && hour < 8) return { name: "\u6668", from: "#FFC896", to: "#FFE8D6", accent: "#C6572E", text: "#4A2E1E", sub: "#8A5A3C", card: "rgba(255,255,255,0.55)" };
+  if (hour >= 8 && hour < 17) return { name: "\u65E5", from: "#6BB9E8", to: "#DFF3FF", accent: "#1D6FA5", text: "#173247", sub: "#3E6883", card: "rgba(255,255,255,0.55)" };
+  if (hour >= 17 && hour < 19) return { name: "\u660F", from: "#FF9166", to: "#4A3B6B", accent: "#FF6F3C", text: "#FFF3EA", sub: "#F2C9B5", card: "rgba(255,255,255,0.14)" };
+  return { name: "\u591C", from: "#141A38", to: "#33396E", accent: "#93A3FF", text: "#EDEFFF", sub: "#A6ADD9", card: "rgba(255,255,255,0.08)" };
 }
-
 function SkyArc({ hour, minute, sunriseHour, sunsetHour, theme, compact }) {
   const isDay = hour + minute / 60 >= sunriseHour && hour + minute / 60 < sunsetHour;
   const w = 300, h = compact ? 74 : 130, cx = 150, cy = compact ? 64 : 118, r = compact ? 56 : 100;
@@ -119,46 +144,50 @@ function SkyArc({ hour, minute, sunriseHour, sunsetHour, theme, compact }) {
     progress = t / nightLen;
   }
   progress = Math.min(Math.max(progress, 0), 1);
-  const theta = ((180 - 180 * progress) * Math.PI) / 180;
+  const theta = (180 - 180 * progress) * Math.PI / 180;
   const mx = cx + r * Math.cos(theta), my = cy - r * Math.sin(theta);
-  return (
-    <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ display: "block", overflow: "visible" }}>
-      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke={theme.sub}
-            strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="3 6" strokeLinecap="round" />
-      <line x1={cx - r - 10} y1={cy} x2={cx + r + 10} y2={cy} stroke={theme.sub} strokeOpacity="0.25" strokeWidth="1" />
-      <circle cx={mx} cy={my} r={compact ? 6 : 9} fill={theme.accent} />
-      <circle cx={mx} cy={my} r={compact ? 11 : 16} fill={theme.accent} opacity="0.22" />
-    </svg>
-  );
+  return /* @__PURE__ */ React.createElement("svg", { width: "100%", viewBox: `0 0 ${w} ${h}`, style: { display: "block", overflow: "visible" } }, /* @__PURE__ */ React.createElement(
+    "path",
+    {
+      d: `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`,
+      fill: "none",
+      stroke: theme.sub,
+      strokeOpacity: "0.35",
+      strokeWidth: "1.5",
+      strokeDasharray: "3 6",
+      strokeLinecap: "round"
+    }
+  ), /* @__PURE__ */ React.createElement("line", { x1: cx - r - 10, y1: cy, x2: cx + r + 10, y2: cy, stroke: theme.sub, strokeOpacity: "0.25", strokeWidth: "1" }), /* @__PURE__ */ React.createElement("circle", { cx: mx, cy: my, r: compact ? 6 : 9, fill: theme.accent }), /* @__PURE__ */ React.createElement("circle", { cx: mx, cy: my, r: compact ? 11 : 16, fill: theme.accent, opacity: "0.22" }));
 }
-
 function WeatherClock() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(/* @__PURE__ */ new Date());
   const [isLandscape, setIsLandscape] = useState(window.matchMedia("(orientation: landscape)").matches);
   const [status, setStatus] = useState("locating");
   const [place, setPlace] = useState("");
   const [current, setCurrent] = useState(null);
   const [daily, setDaily] = useState(null);
   const [aqi, setAqi] = useState(null);
-
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    const t = setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => {
     const mq = window.matchMedia("(orientation: landscape)");
     const handler = (e) => setIsLandscape(e.matches);
     mq.addEventListener ? mq.addEventListener("change", handler) : mq.addListener(handler);
-    return () => (mq.removeEventListener ? mq.removeEventListener("change", handler) : mq.removeListener(handler));
+    return () => mq.removeEventListener ? mq.removeEventListener("change", handler) : mq.removeListener(handler);
   }, []);
-
   const loadWeather = useCallback(async (lat, lon) => {
     try {
       const [wRes, aRes, gRes] = await Promise.allSettled([
         fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weathercode,is_day&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&timezone=auto&forecast_days=7`),
         fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`),
-        fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=zh`),
+        fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=zh`)
       ]);
       if (wRes.status !== "fulfilled" || !wRes.value.ok) throw new Error("weather fetch failed");
       const wData = await wRes.value.json();
-      setCurrent(wData.current); setDaily(wData.daily);
+      setCurrent(wData.current);
+      setDaily(wData.daily);
       if (aRes.status === "fulfilled" && aRes.value.ok) {
         const aData = await aRes.value.json();
         setAqi(aData.current ? aData.current.us_aqi : null);
@@ -166,37 +195,39 @@ function WeatherClock() {
       if (gRes.status === "fulfilled" && gRes.value.ok) {
         const gData = await gRes.value.json();
         const parts = [gData.city || gData.locality, gData.principalSubdivision].filter(Boolean);
-        setPlace(parts.join(" · ") || "目前位置");
-      } else setPlace("目前位置");
+        setPlace(parts.join(" \xB7 ") || "\u76EE\u524D\u4F4D\u7F6E");
+      } else setPlace("\u76EE\u524D\u4F4D\u7F6E");
       setStatus("ready");
-    } catch (e) { setStatus("error"); }
+    } catch (e) {
+      setStatus("error");
+    }
   }, []);
-
   const requestLocation = useCallback(() => {
     setStatus("locating");
-    if (!navigator.geolocation) { setStatus("error"); return; }
+    if (!navigator.geolocation) {
+      setStatus("error");
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => loadWeather(pos.coords.latitude, pos.coords.longitude),
       () => setStatus("denied"),
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 }
+      { enableHighAccuracy: false, timeout: 1e4, maximumAge: 5 * 60 * 1e3 }
     );
   }, [loadWeather]);
-
-  useEffect(() => { requestLocation(); }, [requestLocation]);
-
+  useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
   const hour = now.getHours(), minute = now.getMinutes();
   const theme = useMemo(() => getTheme(hour), [hour]);
   const timeStr = now.toLocaleTimeString("zh-TW", { hour12: false });
   const dateStr = now.toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric" });
   const weekdayStr = now.toLocaleDateString("zh-TW", { weekday: "long" });
-
   const sunriseHour = daily && daily.sunrise ? new Date(daily.sunrise[0]).getHours() + new Date(daily.sunrise[0]).getMinutes() / 60 : 6;
   const sunsetHour = daily && daily.sunset ? new Date(daily.sunset[0]).getHours() + new Date(daily.sunset[0]).getMinutes() / 60 : 18;
-
   const week = useMemo(() => {
     if (!daily) return [];
     return daily.time.map((d, i) => {
-      const dt = new Date(d + "T00:00:00");
+      const dt = /* @__PURE__ */ new Date(d + "T00:00:00");
       return {
         date: `${dt.getMonth() + 1}/${dt.getDate()}`,
         weekday: dt.toLocaleDateString("zh-TW", { weekday: "short" }),
@@ -204,114 +235,51 @@ function WeatherClock() {
         hi: Math.round(daily.temperature_2m_max[i]),
         lo: Math.round(daily.temperature_2m_min[i]),
         rain: daily.precipitation_probability_max ? daily.precipitation_probability_max[i] : null,
-        isToday: i === 0,
+        isToday: i === 0
       };
     });
   }, [daily]);
-
   const clockFontSize = isLandscape ? 30 : 42;
-
-  return (
-    <div style={{
-      height: isLandscape ? "100vh" : "auto", minHeight: "100vh", width: "100%",
-      overflow: isLandscape ? "hidden" : "auto",
-      background: `linear-gradient(160deg, ${theme.from} 0%, ${theme.to} 100%)`,
-      color: theme.text, transition: "background 1.2s ease, color 1.2s ease",
-      display: "flex", justifyContent: "center", boxSizing: "border-box",
-    }}>
-      <div className="shell-pad">
-        <div className="grid-wrap">
-          <div className="area-header" style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.85, fontSize: 13 }}>
-            <MapPin size={14} />
-            <span>{place || (status === "locating" ? "定位中…" : status === "denied" ? "未取得定位權限" : "無法取得天氣")}</span>
-            <span style={{ marginLeft: "auto", fontSize: 11, letterSpacing: 2, opacity: 0.7 }}>{theme.name}</span>
-            {(status === "denied" || status === "error") && (
-              <button onClick={requestLocation} style={{
-                display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: theme.accent,
-                background: "transparent", border: `1px solid ${theme.accent}55`, borderRadius: 999,
-                padding: "3px 8px", cursor: "pointer",
-              }}><RotateCcw size={11} /> 重試</button>
-            )}
-          </div>
-
-          <div className="area-clock">
-            <div className="clock-num" style={{ fontSize: clockFontSize, fontWeight: 700, lineHeight: 1.05 }}>{timeStr}</div>
-            <div style={{ fontSize: 13, marginTop: 4, color: theme.sub }}>{dateStr}・{weekdayStr}</div>
-          </div>
-
-          <div className="area-sky">
-            <SkyArc hour={hour} minute={minute} sunriseHour={sunriseHour} sunsetHour={sunsetHour} theme={theme} compact={isLandscape} />
-          </div>
-
-          <div className="area-today today-card">
-            {status === "ready" && current ? (
-              <div style={{ background: theme.card, backdropFilter: "blur(10px)", borderRadius: 18, padding: "16px 18px", border: `1px solid ${theme.accent}22` }}>
-                {(() => {
-                  const IconC = wmoIcon(current.weathercode, current.is_day === 1);
-                  return (
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <IconC size={isLandscape ? 32 : 38} color={theme.accent} />
-                      <div>
-                        <div style={{ fontSize: isLandscape ? 22 : 25, fontWeight: 700 }}>{Math.round(current.temperature_2m)}°C</div>
-                        <div style={{ fontSize: 12, color: theme.sub }}>{WMO_TEXT[current.weathercode] || "—"}・體感 {Math.round(current.apparent_temperature)}°C</div>
-                      </div>
-                    </div>
-                  );
-                })()}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginTop: 14, fontSize: 11, color: theme.sub }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}><Droplets size={15} />{Math.round(current.relative_humidity_2m)}%</div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}><Wind size={15} />{current.wind_speed_10m} km/h</div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}><Gauge size={15} />AQI {aqi != null ? Math.round(aqi) : "—"}</div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}><CloudRain size={15} />{week[0] && week[0].rain != null ? `${week[0].rain}%` : "—"}</div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ background: theme.card, borderRadius: 18, padding: "18px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: theme.sub }}>
-                {status === "locating" && <Loader2 size={16} className="spin" />}
-                {status === "locating" && "正在取得目前位置的天氣…"}
-                {status === "denied" && "請允許定位權限以顯示當地天氣"}
-                {status === "error" && "天氣資料載入失敗，請重試"}
-              </div>
-            )}
-          </div>
-
-          <div className="area-week">
-            <div style={{ fontSize: 12, letterSpacing: 2, color: theme.sub, marginBottom: 8 }}>一週天氣預報</div>
-            <div className="day-scroll" style={{ display: "flex", gap: 8, overflowX: isLandscape ? "visible" : "auto", paddingBottom: 2 }}>
-              {week.length > 0 ? week.map((d) => {
-                const IconC = wmoIcon(d.code, true);
-                return (
-                  <div key={d.date} style={{
-                    flex: isLandscape ? "1 1 0" : "0 0 auto", minWidth: isLandscape ? 0 : 76,
-                    background: d.isToday ? `${theme.accent}22` : theme.card,
-                    border: d.isToday ? `1px solid ${theme.accent}66` : `1px solid ${theme.accent}15`,
-                    borderRadius: 14, padding: isLandscape ? "8px 4px" : "12px 8px", textAlign: "center",
-                  }}>
-                    <div style={{ fontSize: 11, fontWeight: d.isToday ? 700 : 500, color: d.isToday ? theme.accent : theme.sub }}>{d.isToday ? "今天" : d.weekday}</div>
-                    <div style={{ fontSize: 10, color: theme.sub, marginTop: 1 }}>{d.date}</div>
-                    <IconC size={isLandscape ? 18 : 24} color={theme.accent} style={{ margin: isLandscape ? "6px 0" : "8px 0" }} />
-                    <div style={{ fontSize: 10, color: theme.sub, lineHeight: 1.25, minHeight: isLandscape ? 0 : 26 }}>{WMO_TEXT[d.code] || "—"}</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, marginTop: 3 }}>{d.hi}° / {d.lo}°</div>
-                  </div>
-                );
-              }) : Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} style={{ flex: isLandscape ? "1 1 0" : "0 0 auto", minWidth: isLandscape ? 0 : 76, background: theme.card, borderRadius: 14, padding: "12px 8px", opacity: 0.4 }}>
-                  <div style={{ fontSize: 11 }}>—</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="area-footer footer-note" style={{ fontSize: 10, color: theme.sub, textAlign: "center", opacity: 0.7 }}>
-            天氣資料來源：Open-Meteo・依裝置定位自動更新
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return /* @__PURE__ */ React.createElement("div", { style: {
+    height: isLandscape ? "100vh" : "auto",
+    minHeight: "100vh",
+    width: "100%",
+    overflow: isLandscape ? "hidden" : "auto",
+    background: `linear-gradient(160deg, ${theme.from} 0%, ${theme.to} 100%)`,
+    color: theme.text,
+    transition: "background 1.2s ease, color 1.2s ease",
+    display: "flex",
+    justifyContent: "center",
+    boxSizing: "border-box"
+  } }, /* @__PURE__ */ React.createElement("div", { className: "shell-pad" }, /* @__PURE__ */ React.createElement("div", { className: "grid-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "area-header", style: { display: "flex", alignItems: "center", gap: 6, opacity: 0.85, fontSize: 13 } }, /* @__PURE__ */ React.createElement(MapPin, { size: 14 }), /* @__PURE__ */ React.createElement("span", null, place || (status === "locating" ? "\u5B9A\u4F4D\u4E2D\u2026" : status === "denied" ? "\u672A\u53D6\u5F97\u5B9A\u4F4D\u6B0A\u9650" : "\u7121\u6CD5\u53D6\u5F97\u5929\u6C23")), /* @__PURE__ */ React.createElement("span", { style: { marginLeft: "auto", fontSize: 11, letterSpacing: 2, opacity: 0.7 } }, theme.name), (status === "denied" || status === "error") && /* @__PURE__ */ React.createElement("button", { onClick: requestLocation, style: {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: 11,
+    color: theme.accent,
+    background: "transparent",
+    border: `1px solid ${theme.accent}55`,
+    borderRadius: 999,
+    padding: "3px 8px",
+    cursor: "pointer"
+  } }, /* @__PURE__ */ React.createElement(RotateCcw, { size: 11 }), " \u91CD\u8A66")), /* @__PURE__ */ React.createElement("div", { className: "area-clock" }, /* @__PURE__ */ React.createElement("div", { className: "clock-num", style: { fontSize: clockFontSize, fontWeight: 700, lineHeight: 1.05 } }, timeStr), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, marginTop: 4, color: theme.sub } }, dateStr, "\u30FB", weekdayStr)), /* @__PURE__ */ React.createElement("div", { className: "area-sky" }, /* @__PURE__ */ React.createElement(SkyArc, { hour, minute, sunriseHour, sunsetHour, theme, compact: isLandscape })), /* @__PURE__ */ React.createElement("div", { className: "area-today today-card" }, status === "ready" && current ? /* @__PURE__ */ React.createElement("div", { style: { background: theme.card, backdropFilter: "blur(10px)", borderRadius: 18, padding: "16px 18px", border: `1px solid ${theme.accent}22` } }, (() => {
+    const IconC = wmoIcon(current.weathercode, current.is_day === 1);
+    return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(IconC, { size: isLandscape ? 32 : 38, color: theme.accent }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: isLandscape ? 22 : 25, fontWeight: 700 } }, Math.round(current.temperature_2m), "\xB0C"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: theme.sub } }, WMO_TEXT[current.weathercode] || "\u2014", "\u30FB\u9AD4\u611F ", Math.round(current.apparent_temperature), "\xB0C")));
+  })(), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginTop: 14, fontSize: 11, color: theme.sub } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, /* @__PURE__ */ React.createElement(Droplets, { size: 15 }), Math.round(current.relative_humidity_2m), "%"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, /* @__PURE__ */ React.createElement(Wind, { size: 15 }), current.wind_speed_10m, " km/h"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, /* @__PURE__ */ React.createElement(Gauge, { size: 15 }), "AQI ", aqi != null ? Math.round(aqi) : "\u2014"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, /* @__PURE__ */ React.createElement(CloudRain, { size: 15 }), week[0] && week[0].rain != null ? `${week[0].rain}%` : "\u2014"))) : /* @__PURE__ */ React.createElement("div", { style: { background: theme.card, borderRadius: 18, padding: "18px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: theme.sub } }, status === "locating" && /* @__PURE__ */ React.createElement(Loader2, { size: 16, className: "spin" }), status === "locating" && "\u6B63\u5728\u53D6\u5F97\u76EE\u524D\u4F4D\u7F6E\u7684\u5929\u6C23\u2026", status === "denied" && "\u8ACB\u5141\u8A31\u5B9A\u4F4D\u6B0A\u9650\u4EE5\u986F\u793A\u7576\u5730\u5929\u6C23", status === "error" && "\u5929\u6C23\u8CC7\u6599\u8F09\u5165\u5931\u6557\uFF0C\u8ACB\u91CD\u8A66")), /* @__PURE__ */ React.createElement("div", { className: "area-week" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, letterSpacing: 2, color: theme.sub, marginBottom: 8 } }, "\u4E00\u9031\u5929\u6C23\u9810\u5831"), /* @__PURE__ */ React.createElement("div", { className: "day-scroll", style: { display: "flex", gap: 8, overflowX: isLandscape ? "visible" : "auto", paddingBottom: 2 } }, week.length > 0 ? week.map((d) => {
+    const IconC = wmoIcon(d.code, true);
+    return /* @__PURE__ */ React.createElement("div", { key: d.date, style: {
+      flex: isLandscape ? "1 1 0" : "0 0 auto",
+      minWidth: isLandscape ? 0 : 76,
+      background: d.isToday ? `${theme.accent}22` : theme.card,
+      border: d.isToday ? `1px solid ${theme.accent}66` : `1px solid ${theme.accent}15`,
+      borderRadius: 14,
+      padding: isLandscape ? "8px 4px" : "12px 8px",
+      textAlign: "center"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: d.isToday ? 700 : 500, color: d.isToday ? theme.accent : theme.sub } }, d.isToday ? "\u4ECA\u5929" : d.weekday), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: theme.sub, marginTop: 1 } }, d.date), /* @__PURE__ */ React.createElement(IconC, { size: isLandscape ? 18 : 24, color: theme.accent, style: { margin: isLandscape ? "6px 0" : "8px 0" } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: theme.sub, lineHeight: 1.25, minHeight: isLandscape ? 0 : 26 } }, WMO_TEXT[d.code] || "\u2014"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 700, marginTop: 3 } }, d.hi, "\xB0 / ", d.lo, "\xB0"));
+  }) : Array.from({ length: 7 }).map((_, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { flex: isLandscape ? "1 1 0" : "0 0 auto", minWidth: isLandscape ? 0 : 76, background: theme.card, borderRadius: 14, padding: "12px 8px", opacity: 0.4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11 } }, "\u2014"))))), /* @__PURE__ */ React.createElement("div", { className: "area-footer footer-note", style: { fontSize: 10, color: theme.sub, textAlign: "center", opacity: 0.7 } }, "\u5929\u6C23\u8CC7\u6599\u4F86\u6E90\uFF1AOpen-Meteo\u30FB\u4F9D\u88DD\u7F6E\u5B9A\u4F4D\u81EA\u52D5\u66F4\u65B0"))));
 }
+ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(WeatherClock, null));
 
-ReactDOM.createRoot(document.getElementById("root")).render(<WeatherClock />);
 </script>
 </body>
 </html>

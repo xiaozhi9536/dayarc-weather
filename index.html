@@ -1,15 +1,18 @@
-<!-- Version: v1.4 - 新增定時自動刷新網頁與背景天氣資料更新功能 -->
+<!-- Version: v2.0 - 統一降雨機率圖示，區分 CWA 與 Open-Meteo 資料來源 -->
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>DayArc · 時鐘與一週天氣</title>
+<!-- 引入 Google Fonts 字體 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- 引入 React 與 ReactDOM -->
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <style>
+  /* 全域基本樣式重置與設定 */
   html, body { margin:0; padding:0; }
   * { box-sizing: border-box; }
   body { font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif; }
@@ -17,6 +20,8 @@
   .day-scroll::-webkit-scrollbar { height: 0px; }
   .spin { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  
+  /* 網格與排版區塊 */
   .shell-pad { width:100%; display:flex; justify-content:center; }
   .grid-wrap { display: grid; width: 100%; }
   .area-header { grid-area: header; }
@@ -80,14 +85,14 @@
 <div id="root"></div>
 <script>
 /* ==========================================
- * 設定區：請在此填入您的中央氣象署 API 授權碼
+ * 設定區：中央氣象署 API 授權碼
  * ========================================== */
-const CWA_API_KEY = ""; // 例："CWA-12345678-ABCD-EFGH-IJKL-1234567890AB"
+const CWA_API_KEY = ""; // 請在此填入您的 API 金鑰
 
-const { useState, useEffect, useMemo, useCallback } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 /* ==========================================
- * SVG 圖示組件定義
+ * SVG 圖示組件定義 (提供 UI 各種天氣及介面 Icon)
  * ========================================== */
 const Icon = ({ children, size = 20, color = "currentColor", strokeWidth = 1.8, style }) => React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style }, children);
 const Sun = (p) => React.createElement(Icon, { ...p }, React.createElement("circle", { cx: "12", cy: "12", r: "4" }), React.createElement("path", { d: "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" }));
@@ -108,8 +113,9 @@ const Crosshair = (p) => React.createElement(Icon, { ...p }, React.createElement
 const XIcon = (p) => React.createElement(Icon, { ...p }, React.createElement("line", { x1: "18", y1: "6", x2: "6", y2: "18" }), React.createElement("line", { x1: "6", y1: "6", x2: "18", y2: "18" }));
 
 /* ==========================================
- * CWA 與 WMO 天氣代碼對應
+ * 輔助邏輯：天氣代碼轉換與主題切換
  * ========================================== */
+// 解析 CWA (氣象署) 的天氣代碼並回傳對應圖示
 function parseCwaIcon(wxCode, isDay) {
   const code = parseInt(wxCode, 10);
   if (code === 1) return isDay ? Sun : Moon;
@@ -121,6 +127,7 @@ function parseCwaIcon(wxCode, isDay) {
   return Cloud;
 }
 
+// 根據當前小時決定介面主題配色 (晨、日、昏、夜)
 function getTheme(hour) {
   if (hour >= 5 && hour < 8) return { name: "晨", from: "#FFC896", to: "#FFE8D6", accent: "#C6572E", text: "#4A2E1E", sub: "#8A5A3C", card: "rgba(255,255,255,0.55)" };
   if (hour >= 8 && hour < 17) return { name: "日", from: "#6BB9E8", to: "#DFF3FF", accent: "#1D6FA5", text: "#173247", sub: "#3E6883", card: "rgba(255,255,255,0.55)" };
@@ -128,6 +135,7 @@ function getTheme(hour) {
   return { name: "夜", from: "#141A38", to: "#33396E", accent: "#93A3FF", text: "#EDEFFF", sub: "#A6ADD9", card: "rgba(255,255,255,0.08)" };
 }
 
+// 取得響應式 (RWD) 尺寸設定
 function getSizes(tier, short) {
   const table = {
     sm: { clock: 40, arcH: short ? 68 : 130, arcR: short ? 52 : 100, weekIcon: short ? 18 : 24, todayIcon: short ? 30 : 38, todayTemp: short ? 21 : 25, cardPad: "16px 18px", weekMin: 82 },
@@ -138,7 +146,7 @@ function getSizes(tier, short) {
 }
 
 /* ==========================================
- * 日月弧線軌跡組件
+ * UI 組件：日月弧線軌跡 (SkyArc)
  * ========================================== */
 function SkyArc({ hour, minute, theme, h, r }) {
   const sunriseHour = 6, sunsetHour = 18;
@@ -163,6 +171,7 @@ function SkyArc({ hour, minute, theme, h, r }) {
   );
 }
 
+// 監聽視窗大小改變
 function useViewport() {
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
   useEffect(() => {
@@ -173,6 +182,99 @@ function useViewport() {
     return () => { window.removeEventListener("resize", onResize); window.removeEventListener("orientationchange", onResize); cancelAnimationFrame(raf); };
   }, []);
   return size;
+}
+
+/* ==========================================
+ * UI 組件：地點搜尋彈窗 (LocationModal)
+ * ========================================== */
+function LocationModal({ isOpen, onClose, onSelectLocation, onUseGps }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // 防抖處理搜尋請求
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=zh&format=json`);
+        const data = await res.json();
+        setResults(data.results || []);
+      } catch (err) {
+        console.error("地名搜尋失敗:", err);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  if (!isOpen) return null;
+
+  return React.createElement("div", { className: "modal-overlay", onClick: onClose },
+    React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation() },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+        React.createElement("span", { style: { fontWeight: "bold", fontSize: 16 } }, "搜尋並切換地點"),
+        React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", cursor: "pointer", padding: 4 } }, React.createElement(XIcon, { size: 18 }))
+      ),
+      React.createElement("input", {
+        type: "text",
+        className: "search-input",
+        placeholder: "輸入城市或地區名稱...",
+        value: query,
+        onChange: (e) => setQuery(e.target.value),
+        autoFocus: true
+      }),
+      React.createElement("button", {
+        onClick: () => { onUseGps(); onClose(); },
+        style: { width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #1d6fa5", background: "#f0f7fc", color: "#1d6fa5", cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13, fontWeight: 500 }
+      }, React.createElement(Crosshair, { size: 14 }), "重新使用當前裝置 GPS 定位"),
+      
+      // 快速選擇按鈕 (預設捷徑)
+      !query.trim() && React.createElement("div", { style: { marginTop: 12 } },
+        React.createElement("div", { style: { fontSize: 12, color: "#666", marginBottom: 8, letterSpacing: 1 } }, "快速選擇："),
+        React.createElement("div", { 
+          className: "location-item", 
+          onClick: () => { onSelectLocation({lat: 24.945, lon: 121.218, name: "桃園平鎮國中"}); onClose(); } 
+        },
+          React.createElement("div", null, React.createElement("div", { style: { fontSize: 14, fontWeight: "500" } }, "桃園平鎮國中")),
+          React.createElement(MapPin, { size: 16, color: "#1d6fa5" })
+        ),
+        React.createElement("div", { 
+          className: "location-item", 
+          onClick: () => { onSelectLocation({lat: 23.026, lon: 120.226, name: "南台科大"}); onClose(); } 
+        },
+          React.createElement("div", null, React.createElement("div", { style: { fontSize: 14, fontWeight: "500" } }, "南台科大")),
+          React.createElement(MapPin, { size: 16, color: "#1d6fa5" })
+        )
+      ),
+
+      // 搜尋結果列表
+      loading && React.createElement("div", { style: { textAlign: "center", padding: "10px", fontSize: 13, color: "#666" } }, "搜尋中..."),
+      !loading && results.length > 0 && React.createElement("div", { style: { maxHeight: "220px", overflowY: "auto" } },
+        results.map((item) => {
+          const title = item.name + (item.admin1 && item.admin1 !== item.name ? ` · ${item.admin1}` : "");
+          const sub = `${item.country || ""} (${item.latitude.toFixed(2)}°, ${item.longitude.toFixed(2)}°)`;
+          return React.createElement("div", {
+            key: item.id,
+            className: "location-item",
+            onClick: () => { onSelectLocation({ lat: item.latitude, lon: item.longitude, name: title }); onClose(); }
+          },
+            React.createElement("div", null,
+              React.createElement("div", { style: { fontSize: 14, fontWeight: "500" } }, title),
+              React.createElement("div", { style: { fontSize: 11, color: "#888" } }, sub)
+            ),
+            React.createElement(MapPin, { size: 16, color: "#1d6fa5" })
+          );
+        })
+      ),
+      !loading && query.trim() !== "" && results.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: "10px", fontSize: 13, color: "#888" } }, "未找到符合的地點")
+    )
+  );
 }
 
 /* ==========================================
@@ -188,96 +290,44 @@ function WeatherClock() {
   const [aqi, setAqi] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sourceMsg, setSourceMsg] = useState("Open-Meteo");
+  const [lastUpdate, setLastUpdate] = useState("");
 
-  // 統一處理並載入天氣
+  // 儲存最後成功獲取資料的地點，作為斷線或失敗時的備援方案
+  const lastGoodLoc = useRef(null);
+
+  // 獨立：大時鐘每一秒更新
+  useEffect(() => {
+    const clockTimer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(clockTimer);
+  }, []);
+
+  // 混合雙引擎載入天氣 (Open-Meteo 為底，CWA 覆寫)
   const loadWeather = useCallback(async (lat, lon, customPlaceName = null) => {
     try {
-      if (!weatherData.current) setStatus("locating"); // 若已有舊資料則不顯示載入中，實現平滑更新
-      setCoordsText(`${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`);
+      setStatus(prev => prev === "ready" ? "ready" : "locating");
       
-      // 1. 取得地名資訊
       let geocodeData = {};
       if (!customPlaceName) {
         const gRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=zh`);
         if (gRes.ok) geocodeData = await gRes.json();
       }
 
-      const isTaiwan = customPlaceName ? customPlaceName.includes("台灣") || customPlaceName.includes("臺") : (geocodeData.countryCode === "TW");
+      const isTaiwan = customPlaceName ? customPlaceName.includes("台灣") || customPlaceName.includes("臺") || customPlaceName.includes("國中") || customPlaceName.includes("科大") : (geocodeData.countryCode === "TW");
       const finalPlaceName = customPlaceName || [geocodeData.city || geocodeData.principalSubdivision, geocodeData.locality].filter(Boolean).join(" · ");
-      setPlace(finalPlaceName || "目前位置");
 
-      // 取得 AQI
+      // 取得空氣品質指標
       fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`)
         .then(res => res.json()).then(data => setAqi(data.current?.us_aqi || null)).catch(() => setAqi(null));
 
-      // 2. 判斷是否使用中央氣象署 (CWA)
-      if (isTaiwan && CWA_API_KEY) {
-        try {
-          const cwaCity = geocodeData.city || geocodeData.principalSubdivision || (customPlaceName ? customPlaceName.split("·")[0]?.trim() : "臺北市");
-          const formalCity = cwaCity.replace("台", "臺"); 
-          
-          const cwaRes = await fetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=${CWA_API_KEY}&locationName=${formalCity}`);
-          const cwaData = await cwaRes.json();
-          
-          if (cwaData.success === "true" && cwaData.records.location.length > 0) {
-             const loc = cwaData.records.location[0];
-             const getVal = (elName, timeIdx) => loc.weatherElement.find(e => e.elementName === elName).time[timeIdx].parameter;
-             
-             const currentWx = getVal("Wx", 0);
-             const currentT = getVal("MinT", 0);
-             const currentPoP = getVal("PoP", 0);
+      let finalParsedData = null;
+      let finalSource = "Open-Meteo";
 
-             const parsedData = {
-               current: {
-                 temp: currentT.parameterName,
-                 apparentTemp: parseInt(currentT.parameterName) + 2,
-                 rh: 75,
-                 windSpeed: 5,
-                 wxText: currentWx.parameterName,
-                 wxCode: currentWx.parameterValue,
-                 rain: currentPoP.parameterName,
-                 isCwa: true
-               },
-               daily: []
-             };
-
-             for(let i=0; i<3; i++) {
-                const wx = getVal("Wx", i);
-                const pop = getVal("PoP", i);
-                const minT = getVal("MinT", i);
-                const maxT = getVal("MaxT", i);
-                const timeStr = loc.weatherElement[0].time[i].startTime;
-                const dt = new Date(timeStr);
-                parsedData.daily.push({
-                   date: `${dt.getMonth()+1}/${dt.getDate()}`,
-                   weekday: dt.toLocaleDateString("zh-TW", { weekday: "short" }),
-                   wxText: wx.parameterName,
-                   code: wx.parameterValue,
-                   hi: maxT.parameterName,
-                   lo: minT.parameterName,
-                   rain: pop.parameterName,
-                   isToday: i === 0,
-                   isCwa: true
-                });
-             }
-             
-             setWeatherData(parsedData);
-             setSourceMsg("中央氣象署 (CWA)");
-             setStatus("ready");
-             return;
-          }
-        } catch (e) {
-           console.warn("CWA 抓取失敗，退回 Open-Meteo", e);
-        }
-      }
-
-      // 3. Fallback: 使用 Open-Meteo
+      // 步驟 1: 始終拉取 Open-Meteo 的 7 天預報作為穩定的 UI 基底
       const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weathercode,is_day&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`);
       const wData = await wRes.json();
-      
       const WMO_TEXT = { 0: "晴朗", 1: "晴時多雲", 2: "多雲", 3: "陰天", 45: "有霧", 48: "霧淞", 51: "毛毛雨", 61: "小雨", 63: "中雨", 65: "大雨", 71: "小雪", 80: "短暫陣雨", 81: "短暫陣雨", 82: "強陣雨", 95: "雷雨", 96: "雷雨" };
       
-      const parsedData = {
+      finalParsedData = {
         current: {
           temp: Math.round(wData.current.temperature_2m),
           apparentTemp: Math.round(wData.current.apparent_temperature),
@@ -303,50 +353,112 @@ function WeatherClock() {
           };
         })
       };
-      
-      setWeatherData(parsedData);
-      setSourceMsg("Open-Meteo");
+
+      // 步驟 2: 如果在台灣且有設定金鑰，呼叫 CWA 進行今日資料精準覆寫
+      if (isTaiwan && CWA_API_KEY) {
+        try {
+          let cwaCity = geocodeData.city || geocodeData.principalSubdivision || (customPlaceName ? customPlaceName.split("·")[0]?.trim() : "臺北市");
+          if (customPlaceName === "南台科大") cwaCity = "臺南市";
+          if (customPlaceName === "桃園平鎮國中") cwaCity = "桃園市";
+
+          const formalCity = cwaCity.replace("台", "臺"); 
+          const cwaRes = await fetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=${CWA_API_KEY}&locationName=${formalCity}`);
+          const cwaData = await cwaRes.json();
+          
+          if (cwaData.success === "true" && cwaData.records.location.length > 0) {
+             const loc = cwaData.records.location[0];
+             const getVal = (elName, timeIdx) => loc.weatherElement.find(e => e.elementName === elName).time[timeIdx].parameter;
+             
+             const currentWx = getVal("Wx", 0);
+             const currentT = getVal("MinT", 0);
+             const currentPoP = getVal("PoP", 0);
+
+             // 覆寫即時天氣資料
+             finalParsedData.current.temp = currentT.parameterName;
+             finalParsedData.current.apparentTemp = parseInt(currentT.parameterName) + 2; 
+             finalParsedData.current.wxText = currentWx.parameterName;
+             finalParsedData.current.wxCode = currentWx.parameterValue;
+             finalParsedData.current.rain = currentPoP.parameterName;
+             finalParsedData.current.isCwa = true;
+
+             // 覆寫一週預報中，屬於「今天」與「明天」的 CWA 預報資料
+             for(let i=0; i<3; i++) {
+                 if(i >= finalParsedData.daily.length) break;
+                 const dayWx = getVal("Wx", i);
+                 const dayPop = getVal("PoP", i);
+                 // 將 CWA 資料注入
+                 finalParsedData.daily[i].rain = dayPop.parameterName;
+                 finalParsedData.daily[i].isCwa = true;
+                 finalParsedData.daily[i].wxText = dayWx.parameterName;
+                 finalParsedData.daily[i].code = dayWx.parameterValue;
+             }
+
+             finalSource = "CWA (即時) + Open-Meteo (一週)";
+          }
+        } catch (e) {
+           console.warn("CWA 抓取覆寫失敗，維持全 Open-Meteo 資料", e);
+        }
+      }
+
+      setCoordsText(`${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`);
+      setPlace(finalPlaceName || "目前位置");
+      setWeatherData(finalParsedData);
+      setSourceMsg(finalSource);
       setStatus("ready");
+      
+      // 成功更新後，紀錄時間與地點
+      setLastUpdate(new Date().toLocaleTimeString("zh-TW", { hour12: false, hour: '2-digit', minute: '2-digit' }));
+      lastGoodLoc.current = { lat, lon, name: customPlaceName };
 
     } catch (e) {
-      console.error(e);
-      if (!weatherData.current) setStatus("error"); // 只有在完全沒有資料時才顯示錯誤狀態
+      console.error("更新天氣失敗", e);
+      if (lastGoodLoc.current) {
+        setStatus("ready"); // 若有歷史備援資料，維持顯示不中斷
+      } else {
+        setStatus("error"); 
+      }
     }
-  }, [weatherData]);
+  }, []);
 
+  // GPS 專用請求 (含備援處理)
   const requestLocation = useCallback(() => {
-    if (!navigator.geolocation) return setStatus("error");
+    if (!navigator.geolocation) {
+       if (lastGoodLoc.current) return loadWeather(lastGoodLoc.current.lat, lastGoodLoc.current.lon, lastGoodLoc.current.name);
+       return setStatus("error");
+    }
+    
+    setStatus(prev => prev === "ready" ? "ready" : "locating");
+    
     navigator.geolocation.getCurrentPosition(
       (pos) => loadWeather(pos.coords.latitude, pos.coords.longitude),
-      () => setStatus("denied"),
+      () => {
+        if (lastGoodLoc.current) {
+          loadWeather(lastGoodLoc.current.lat, lastGoodLoc.current.lon, lastGoodLoc.current.name);
+        } else {
+          setStatus("denied");
+        }
+      },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 }
     );
   }, [loadWeather]);
 
-  /* ==========================================
-   * 定時器邏輯區塊：包含時鐘、背景更新與強制刷新
-   * ========================================== */
+  // 天氣資料背景自動刷新機制
   useEffect(() => { 
-    // 初始載入天氣
-    requestLocation();
+    requestLocation(); 
     
-    // 1. 時鐘更新 (每秒)
-    const clockTimer = setInterval(() => setNow(new Date()), 1000);
+    // 每 30 分鐘更新一次天氣資料
+    const weatherTimer = setInterval(() => {
+      if (lastGoodLoc.current) {
+        loadWeather(lastGoodLoc.current.lat, lastGoodLoc.current.lon, lastGoodLoc.current.name);
+      } else {
+        requestLocation();
+      }
+    }, 30 * 60 * 1000);
     
-    // 2. 天氣背景無縫更新 (每 30 分鐘)
-    // 1800000 毫秒 = 30 分鐘。時間到了會默默拉取新資料，不會讓畫面閃爍
-    const weatherTimer = setInterval(() => requestLocation(), 30 * 60 * 1000);
-    
-    // 3. 整頁強制刷新 (每 12 小時)
-    // 43200000 毫秒 = 12 小時。這可以強制清除瀏覽器長期運行的垃圾記憶體
+    // 每 12 小時重整頁面，釋放系統記憶體
     const pageRefreshTimer = setInterval(() => window.location.reload(), 12 * 60 * 60 * 1000);
-
-    return () => {
-      clearInterval(clockTimer);
-      clearInterval(weatherTimer);
-      clearInterval(pageRefreshTimer);
-    };
-  }, [requestLocation]);
+    return () => { clearInterval(weatherTimer); clearInterval(pageRefreshTimer); };
+  }, [requestLocation, loadWeather]);
 
   const hour = now.getHours(), minute = now.getMinutes();
   const theme = useMemo(() => getTheme(hour), [hour]);
@@ -358,8 +470,9 @@ function WeatherClock() {
   const short = vh < 520;
   const twoColumn = vw >= 600;
   const sizes = getSizes(tier, short);
-  const curWx = weatherData.current;
+  const curWx = weatherData; 
   
+  // 決定使用哪一套 Icon
   const getIconComp = (code, isCwa, isDay) => {
       if(isCwa) return parseCwaIcon(code, isDay);
       if (code === 0) return isDay ? Sun : Moon;
@@ -411,23 +524,25 @@ function WeatherClock() {
 
         React.createElement("div", { className: "area-sky" }, React.createElement(SkyArc, { hour, minute, theme, h: sizes.arcH, r: sizes.arcR }) ),
 
+        // 今日大卡片預報區塊
         React.createElement("div", { className: "area-today", style: twoColumn ? { height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" } : undefined },
-          status === "ready" && curWx ? React.createElement("div", { style: { background: theme.card, backdropFilter: "blur(10px)", borderRadius: 18, padding: sizes.cardPad, border: `1px solid ${theme.accent}22` } },
+          status === "ready" && curWx.current ? React.createElement("div", { style: { background: theme.card, backdropFilter: "blur(10px)", borderRadius: 18, padding: sizes.cardPad, border: `1px solid ${theme.accent}22` } },
             (() => {
-              const IconC = getIconComp(curWx.wxCode, curWx.isCwa, true);
+              const isDayNow = hour >= 6 && hour < 18;
+              const IconC = getIconComp(curWx.current.wxCode, curWx.current.isCwa, isDayNow);
               return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
                 React.createElement(IconC, { size: sizes.todayIcon, color: theme.accent }),
                 React.createElement("div", null,
-                  React.createElement("div", { style: { fontSize: sizes.todayTemp, fontWeight: 700 } }, curWx.temp, "°C"),
-                  React.createElement("div", { style: { fontSize: tier === "lg" ? 14 : 12, color: theme.sub } }, curWx.wxText, "・體感 ", curWx.apparentTemp, "°C")
+                  React.createElement("div", { style: { fontSize: sizes.todayTemp, fontWeight: 700 } }, curWx.current.temp, "°C"),
+                  React.createElement("div", { style: { fontSize: tier === "lg" ? 14 : 12, color: theme.sub } }, curWx.current.wxText, "・體感 ", curWx.current.apparentTemp, "°C")
                 )
               );
             })(),
             React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginTop: 14, fontSize: tier === "lg" ? 12 : 11, color: theme.sub } },
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, React.createElement(Droplets, { size: 15 }), curWx.rh, "%"),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, React.createElement(Wind, { size: 15 }), curWx.windSpeed, curWx.isCwa ? " 級" : " km/h"),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, React.createElement(Gauge, { size: 15 }), "AQI ", aqi != null ? Math.round(aqi) : "—"),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, React.createElement(CloudRain, { size: 15 }), curWx.rain != null ? `${curWx.rain}%` : "—")
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, title: "濕度" }, React.createElement(Droplets, { size: 15 }), curWx.current.rh, "%"),
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, title: "風速" }, React.createElement(Wind, { size: 15 }), curWx.current.windSpeed, curWx.current.isCwa ? " 級" : " km/h"),
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, title: "空氣品質 AQI" }, React.createElement(Gauge, { size: 15 }), "AQI ", aqi != null ? Math.round(aqi) : "—"),
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, title: "降雨機率" }, React.createElement(CloudRain, { size: 15 }), curWx.current.rain != null ? `${curWx.current.rain}%` : "—")
             )
           ) : React.createElement("div", { style: { background: theme.card, borderRadius: 18, padding: "18px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: theme.sub } },
             status === "locating" && React.createElement(Loader2, { size: 16, className: "spin" }),
@@ -435,10 +550,11 @@ function WeatherClock() {
           )
         ),
 
+        // 一週天氣預報清單
         React.createElement("div", { className: "area-week" },
-          React.createElement("div", { style: { fontSize: tier === "lg" ? 13 : 12, letterSpacing: 2, color: theme.sub, marginBottom: 8 } }, "天氣預報"),
+          React.createElement("div", { style: { fontSize: tier === "lg" ? 13 : 12, letterSpacing: 2, color: theme.sub, marginBottom: 8 } }, "一週天氣預報"),
           React.createElement("div", { className: "day-scroll", style: { display: "flex", gap: 8, overflowX: twoColumn ? "visible" : "auto", paddingBottom: 2 } },
-            weatherData.daily.length > 0 ? weatherData.daily.map((d, idx) => {
+            curWx.daily.length > 0 ? curWx.daily.map((d, idx) => {
               const IconC = getIconComp(d.code, d.isCwa, true);
               return React.createElement("div", { 
                 key: idx, 
@@ -452,19 +568,35 @@ function WeatherClock() {
                   textAlign: "center" 
                 } 
               },
-                React.createElement("div", { style: { fontSize: 11, fontWeight: d.isToday ? 700 : 500, color: d.isToday ? theme.accent : theme.sub } }, d.isToday ? "近期" : d.weekday),
-                React.createElement("div", { style: { fontSize: 10, color: theme.sub, marginTop: 1 } }, d.date),
+                // 如果是 CWA 資料，在日期文字旁標記星號 (*)
+                React.createElement("div", { style: { fontSize: 11, fontWeight: d.isToday ? 700 : 500, color: d.isToday ? theme.accent : theme.sub } }, d.isToday ? "今天" : d.weekday),
+                React.createElement("div", { style: { fontSize: 10, color: theme.sub, marginTop: 1 } }, d.date, d.isCwa ? " *" : ""),
+                
                 React.createElement(IconC, { size: sizes.weekIcon, color: theme.accent, style: { margin: short ? "4px 0" : "6px 0" } }),
                 React.createElement("div", { style: { fontSize: 10, color: theme.sub, lineHeight: 1.2, minHeight: short ? 0 : 24 } }, d.wxText),
-                React.createElement("div", { style: { fontSize: 10, fontWeight: "500", color: d.rain != null && d.rain >= 30 ? theme.accent : theme.sub, margin: "4px 0 2px", display: "flex", alignItems: "center", justifyContent: "center", gap: 2 } }, React.createElement(Droplets, { size: 10, color: theme.accent }), d.rain != null ? `${d.rain}%` : "—"),
+                
+                // 統一使用 CloudRain 作為降雨機率的圖示
+                React.createElement("div", { style: { fontSize: 10, fontWeight: "500", color: d.rain != null && d.rain >= 30 ? theme.accent : theme.sub, margin: "4px 0 2px", display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }, title: "降雨機率" }, 
+                  React.createElement(CloudRain, { size: 10, color: theme.accent }), 
+                  d.rain != null ? (d.isCwa ? d.rain + '%' : `${d.rain}%`) : "—"
+                ),
                 React.createElement("div", { style: { fontSize: 11, fontWeight: 700 } }, d.hi, "° / ", d.lo, "°")
               );
             }) : React.createElement("div", null)
           )
         ),
-        !(twoColumn && short) && React.createElement("div", { className: "area-footer", style: { fontSize: 10, color: theme.sub, textAlign: "center", opacity: 0.7 } }, `天氣資料來源：${sourceMsg}・網頁將自動保持最新狀態`)
+        
+        // 頁尾資訊區：說明星號的意義
+        !(twoColumn && short) && React.createElement("div", { className: "area-footer", style: { fontSize: 10, color: theme.sub, textAlign: "center", opacity: 0.7 } }, `天氣資料來源：${sourceMsg} (* 標示為氣象署資料)・最後更新：${lastUpdate || "更新中..."}`)
       )
-    )
+    ),
+
+    React.createElement(LocationModal, {
+      isOpen: isModalOpen,
+      onClose: () => setIsModalOpen(false),
+      onSelectLocation: (loc) => loadWeather(loc.lat, loc.lon, loc.name),
+      onUseGps: requestLocation
+    })
   );
 }
 

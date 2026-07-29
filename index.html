@@ -1,4 +1,4 @@
-<!-- Version: v1.3 - 修復 flexbox 瀏覽器相容性導致的版面擠壓問題，並整合中央氣象署 (CWA) API -->
+<!-- Version: v1.4 - 新增定時自動刷新網頁與背景天氣資料更新功能 -->
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -189,12 +189,10 @@ function WeatherClock() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sourceMsg, setSourceMsg] = useState("Open-Meteo");
 
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
-
   // 統一處理並載入天氣
   const loadWeather = useCallback(async (lat, lon, customPlaceName = null) => {
     try {
-      setStatus("locating");
+      if (!weatherData.current) setStatus("locating"); // 若已有舊資料則不顯示載入中，實現平滑更新
       setCoordsText(`${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`);
       
       // 1. 取得地名資訊
@@ -312,12 +310,11 @@ function WeatherClock() {
 
     } catch (e) {
       console.error(e);
-      setStatus("error");
+      if (!weatherData.current) setStatus("error"); // 只有在完全沒有資料時才顯示錯誤狀態
     }
-  }, []);
+  }, [weatherData]);
 
   const requestLocation = useCallback(() => {
-    setStatus("locating");
     if (!navigator.geolocation) return setStatus("error");
     navigator.geolocation.getCurrentPosition(
       (pos) => loadWeather(pos.coords.latitude, pos.coords.longitude),
@@ -326,7 +323,30 @@ function WeatherClock() {
     );
   }, [loadWeather]);
 
-  useEffect(() => { requestLocation(); }, [requestLocation]);
+  /* ==========================================
+   * 定時器邏輯區塊：包含時鐘、背景更新與強制刷新
+   * ========================================== */
+  useEffect(() => { 
+    // 初始載入天氣
+    requestLocation();
+    
+    // 1. 時鐘更新 (每秒)
+    const clockTimer = setInterval(() => setNow(new Date()), 1000);
+    
+    // 2. 天氣背景無縫更新 (每 30 分鐘)
+    // 1800000 毫秒 = 30 分鐘。時間到了會默默拉取新資料，不會讓畫面閃爍
+    const weatherTimer = setInterval(() => requestLocation(), 30 * 60 * 1000);
+    
+    // 3. 整頁強制刷新 (每 12 小時)
+    // 43200000 毫秒 = 12 小時。這可以強制清除瀏覽器長期運行的垃圾記憶體
+    const pageRefreshTimer = setInterval(() => window.location.reload(), 12 * 60 * 60 * 1000);
+
+    return () => {
+      clearInterval(clockTimer);
+      clearInterval(weatherTimer);
+      clearInterval(pageRefreshTimer);
+    };
+  }, [requestLocation]);
 
   const hour = now.getHours(), minute = now.getMinutes();
   const theme = useMemo(() => getTheme(hour), [hour]);
@@ -363,7 +383,6 @@ function WeatherClock() {
         style: {
           maxWidth: tier === "lg" ? 980 : tier === "md" ? 720 : 440,
           gridTemplateColumns: twoColumn ? tier === "lg" ? "300px 1fr" : "240px 1fr" : "1fr",
-          /* 修正2：明確為 footer 指定橫跨區塊，確保底部文字不會亂跑 */
           gridTemplateAreas: twoColumn 
             ? '"header header" "clock today" "sky today" "week week" "footer footer"' 
             : '"header" "clock" "sky" "today" "week" "footer"',
@@ -424,7 +443,6 @@ function WeatherClock() {
               return React.createElement("div", { 
                 key: idx, 
                 style: { 
-                  /* 修正1：將原本有相容性問題的 "1 1 0" 改為加上明確單位 "1 1 0%" */
                   flex: twoColumn ? "1 1 0%" : "0 0 auto", 
                   minWidth: twoColumn ? 0 : sizes.weekMin, 
                   background: d.isToday ? `${theme.accent}22` : theme.card, 
@@ -444,7 +462,7 @@ function WeatherClock() {
             }) : React.createElement("div", null)
           )
         ),
-        !(twoColumn && short) && React.createElement("div", { className: "area-footer", style: { fontSize: 10, color: theme.sub, textAlign: "center", opacity: 0.7 } }, `天氣資料來源：${sourceMsg}`)
+        !(twoColumn && short) && React.createElement("div", { className: "area-footer", style: { fontSize: 10, color: theme.sub, textAlign: "center", opacity: 0.7 } }, `天氣資料來源：${sourceMsg}・網頁將自動保持最新狀態`)
       )
     )
   );

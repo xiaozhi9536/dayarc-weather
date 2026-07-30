@@ -1,4 +1,4 @@
-<!-- Version: v2.0 - 統一降雨機率圖示，區分 CWA 與 Open-Meteo 資料來源 -->
+<!-- Version: v2.2 - 終極手機閱讀優化版：全面放大細節圖示、降雨機率、各項數值字體與卡片寬度 -->
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -115,7 +115,6 @@ const XIcon = (p) => React.createElement(Icon, { ...p }, React.createElement("li
 /* ==========================================
  * 輔助邏輯：天氣代碼轉換與主題切換
  * ========================================== */
-// 解析 CWA (氣象署) 的天氣代碼並回傳對應圖示
 function parseCwaIcon(wxCode, isDay) {
   const code = parseInt(wxCode, 10);
   if (code === 1) return isDay ? Sun : Moon;
@@ -127,7 +126,6 @@ function parseCwaIcon(wxCode, isDay) {
   return Cloud;
 }
 
-// 根據當前小時決定介面主題配色 (晨、日、昏、夜)
 function getTheme(hour) {
   if (hour >= 5 && hour < 8) return { name: "晨", from: "#FFC896", to: "#FFE8D6", accent: "#C6572E", text: "#4A2E1E", sub: "#8A5A3C", card: "rgba(255,255,255,0.55)" };
   if (hour >= 8 && hour < 17) return { name: "日", from: "#6BB9E8", to: "#DFF3FF", accent: "#1D6FA5", text: "#173247", sub: "#3E6883", card: "rgba(255,255,255,0.55)" };
@@ -135,12 +133,12 @@ function getTheme(hour) {
   return { name: "夜", from: "#141A38", to: "#33396E", accent: "#93A3FF", text: "#EDEFFF", sub: "#A6ADD9", card: "rgba(255,255,255,0.08)" };
 }
 
-// 取得響應式 (RWD) 尺寸設定
+// 取得響應式尺寸設定 (v2.2 調整：全面加寬 weekMin 以容納放大的字體，並放大圖示)
 function getSizes(tier, short) {
   const table = {
-    sm: { clock: 40, arcH: short ? 68 : 130, arcR: short ? 52 : 100, weekIcon: short ? 18 : 24, todayIcon: short ? 30 : 38, todayTemp: short ? 21 : 25, cardPad: "16px 18px", weekMin: 82 },
-    md: { clock: 50, arcH: short ? 92 : 150, arcR: short ? 70 : 118, weekIcon: 26, todayIcon: 42, todayTemp: 28, cardPad: "20px 22px", weekMin: 94 },
-    lg: { clock: 60, arcH: short ? 100 : 170, arcR: short ? 78 : 136, weekIcon: 30, todayIcon: 48, todayTemp: 32, cardPad: "24px 26px", weekMin: 104 }
+    sm: { clock: 40, arcH: short ? 68 : 130, arcR: short ? 52 : 100, weekIcon: short ? 26 : 32, todayIcon: short ? 30 : 38, todayTemp: short ? 21 : 25, cardPad: "16px 18px", weekMin: 104 },
+    md: { clock: 50, arcH: short ? 92 : 150, arcR: short ? 70 : 118, weekIcon: 36, todayIcon: 42, todayTemp: 28, cardPad: "20px 22px", weekMin: 114 },
+    lg: { clock: 60, arcH: short ? 100 : 170, arcR: short ? 78 : 136, weekIcon: 40, todayIcon: 48, todayTemp: 32, cardPad: "24px 26px", weekMin: 124 }
   };
   return table[tier];
 }
@@ -171,7 +169,6 @@ function SkyArc({ hour, minute, theme, h, r }) {
   );
 }
 
-// 監聽視窗大小改變
 function useViewport() {
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
   useEffect(() => {
@@ -192,7 +189,6 @@ function LocationModal({ isOpen, onClose, onSelectLocation, onUseGps }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 防抖處理搜尋請求
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -234,7 +230,6 @@ function LocationModal({ isOpen, onClose, onSelectLocation, onUseGps }) {
         style: { width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #1d6fa5", background: "#f0f7fc", color: "#1d6fa5", cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13, fontWeight: 500 }
       }, React.createElement(Crosshair, { size: 14 }), "重新使用當前裝置 GPS 定位"),
       
-      // 快速選擇按鈕 (預設捷徑)
       !query.trim() && React.createElement("div", { style: { marginTop: 12 } },
         React.createElement("div", { style: { fontSize: 12, color: "#666", marginBottom: 8, letterSpacing: 1 } }, "快速選擇："),
         React.createElement("div", { 
@@ -253,7 +248,6 @@ function LocationModal({ isOpen, onClose, onSelectLocation, onUseGps }) {
         )
       ),
 
-      // 搜尋結果列表
       loading && React.createElement("div", { style: { textAlign: "center", padding: "10px", fontSize: 13, color: "#666" } }, "搜尋中..."),
       !loading && results.length > 0 && React.createElement("div", { style: { maxHeight: "220px", overflowY: "auto" } },
         results.map((item) => {
@@ -292,7 +286,6 @@ function WeatherClock() {
   const [sourceMsg, setSourceMsg] = useState("Open-Meteo");
   const [lastUpdate, setLastUpdate] = useState("");
 
-  // 儲存最後成功獲取資料的地點，作為斷線或失敗時的備援方案
   const lastGoodLoc = useRef(null);
 
   // 獨立：大時鐘每一秒更新
@@ -301,7 +294,6 @@ function WeatherClock() {
     return () => clearInterval(clockTimer);
   }, []);
 
-  // 混合雙引擎載入天氣 (Open-Meteo 為底，CWA 覆寫)
   const loadWeather = useCallback(async (lat, lon, customPlaceName = null) => {
     try {
       setStatus(prev => prev === "ready" ? "ready" : "locating");
@@ -315,14 +307,12 @@ function WeatherClock() {
       const isTaiwan = customPlaceName ? customPlaceName.includes("台灣") || customPlaceName.includes("臺") || customPlaceName.includes("國中") || customPlaceName.includes("科大") : (geocodeData.countryCode === "TW");
       const finalPlaceName = customPlaceName || [geocodeData.city || geocodeData.principalSubdivision, geocodeData.locality].filter(Boolean).join(" · ");
 
-      // 取得空氣品質指標
       fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`)
         .then(res => res.json()).then(data => setAqi(data.current?.us_aqi || null)).catch(() => setAqi(null));
 
       let finalParsedData = null;
       let finalSource = "Open-Meteo";
 
-      // 步驟 1: 始終拉取 Open-Meteo 的 7 天預報作為穩定的 UI 基底
       const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weathercode,is_day&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`);
       const wData = await wRes.json();
       const WMO_TEXT = { 0: "晴朗", 1: "晴時多雲", 2: "多雲", 3: "陰天", 45: "有霧", 48: "霧淞", 51: "毛毛雨", 61: "小雨", 63: "中雨", 65: "大雨", 71: "小雪", 80: "短暫陣雨", 81: "短暫陣雨", 82: "強陣雨", 95: "雷雨", 96: "雷雨" };
@@ -354,7 +344,6 @@ function WeatherClock() {
         })
       };
 
-      // 步驟 2: 如果在台灣且有設定金鑰，呼叫 CWA 進行今日資料精準覆寫
       if (isTaiwan && CWA_API_KEY) {
         try {
           let cwaCity = geocodeData.city || geocodeData.principalSubdivision || (customPlaceName ? customPlaceName.split("·")[0]?.trim() : "臺北市");
@@ -373,7 +362,6 @@ function WeatherClock() {
              const currentT = getVal("MinT", 0);
              const currentPoP = getVal("PoP", 0);
 
-             // 覆寫即時天氣資料
              finalParsedData.current.temp = currentT.parameterName;
              finalParsedData.current.apparentTemp = parseInt(currentT.parameterName) + 2; 
              finalParsedData.current.wxText = currentWx.parameterName;
@@ -381,12 +369,10 @@ function WeatherClock() {
              finalParsedData.current.rain = currentPoP.parameterName;
              finalParsedData.current.isCwa = true;
 
-             // 覆寫一週預報中，屬於「今天」與「明天」的 CWA 預報資料
              for(let i=0; i<3; i++) {
                  if(i >= finalParsedData.daily.length) break;
                  const dayWx = getVal("Wx", i);
                  const dayPop = getVal("PoP", i);
-                 // 將 CWA 資料注入
                  finalParsedData.daily[i].rain = dayPop.parameterName;
                  finalParsedData.daily[i].isCwa = true;
                  finalParsedData.daily[i].wxText = dayWx.parameterName;
@@ -406,21 +392,19 @@ function WeatherClock() {
       setSourceMsg(finalSource);
       setStatus("ready");
       
-      // 成功更新後，紀錄時間與地點
       setLastUpdate(new Date().toLocaleTimeString("zh-TW", { hour12: false, hour: '2-digit', minute: '2-digit' }));
       lastGoodLoc.current = { lat, lon, name: customPlaceName };
 
     } catch (e) {
       console.error("更新天氣失敗", e);
       if (lastGoodLoc.current) {
-        setStatus("ready"); // 若有歷史備援資料，維持顯示不中斷
+        setStatus("ready"); 
       } else {
         setStatus("error"); 
       }
     }
   }, []);
 
-  // GPS 專用請求 (含備援處理)
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
        if (lastGoodLoc.current) return loadWeather(lastGoodLoc.current.lat, lastGoodLoc.current.lon, lastGoodLoc.current.name);
@@ -442,11 +426,9 @@ function WeatherClock() {
     );
   }, [loadWeather]);
 
-  // 天氣資料背景自動刷新機制
   useEffect(() => { 
     requestLocation(); 
     
-    // 每 30 分鐘更新一次天氣資料
     const weatherTimer = setInterval(() => {
       if (lastGoodLoc.current) {
         loadWeather(lastGoodLoc.current.lat, lastGoodLoc.current.lon, lastGoodLoc.current.name);
@@ -455,7 +437,6 @@ function WeatherClock() {
       }
     }, 30 * 60 * 1000);
     
-    // 每 12 小時重整頁面，釋放系統記憶體
     const pageRefreshTimer = setInterval(() => window.location.reload(), 12 * 60 * 60 * 1000);
     return () => { clearInterval(weatherTimer); clearInterval(pageRefreshTimer); };
   }, [requestLocation, loadWeather]);
@@ -472,7 +453,6 @@ function WeatherClock() {
   const sizes = getSizes(tier, short);
   const curWx = weatherData; 
   
-  // 決定使用哪一套 Icon
   const getIconComp = (code, isCwa, isDay) => {
       if(isCwa) return parseCwaIcon(code, isDay);
       if (code === 0) return isDay ? Sun : Moon;
@@ -538,11 +518,12 @@ function WeatherClock() {
                 )
               );
             })(),
-            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginTop: 14, fontSize: tier === "lg" ? 12 : 11, color: theme.sub } },
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, title: "濕度" }, React.createElement(Droplets, { size: 15 }), curWx.current.rh, "%"),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, title: "風速" }, React.createElement(Wind, { size: 15 }), curWx.current.windSpeed, curWx.current.isCwa ? " 級" : " km/h"),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, title: "空氣品質 AQI" }, React.createElement(Gauge, { size: 15 }), "AQI ", aqi != null ? Math.round(aqi) : "—"),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, title: "降雨機率" }, React.createElement(CloudRain, { size: 15 }), curWx.current.rain != null ? `${curWx.current.rain}%` : "—")
+            // 細節數值區塊：(v2.2) 再次放大字體 (16px) 與圖示 (24px)
+            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginTop: 16, fontSize: tier === "lg" ? 18 : 16, fontWeight: 600, color: theme.sub } },
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }, title: "濕度" }, React.createElement(Droplets, { size: 24 }), curWx.current.rh, "%"),
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }, title: "風速" }, React.createElement(Wind, { size: 24 }), curWx.current.windSpeed, curWx.current.isCwa ? " 級" : " km/h"),
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }, title: "空氣品質 AQI" }, React.createElement(Gauge, { size: 24 }), "AQI ", aqi != null ? Math.round(aqi) : "—"),
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }, title: "降雨機率" }, React.createElement(CloudRain, { size: 24 }), curWx.current.rain != null ? `${curWx.current.rain}%` : "—")
             )
           ) : React.createElement("div", { style: { background: theme.card, borderRadius: 18, padding: "18px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: theme.sub } },
             status === "locating" && React.createElement(Loader2, { size: 16, className: "spin" }),
@@ -568,19 +549,19 @@ function WeatherClock() {
                   textAlign: "center" 
                 } 
               },
-                // 如果是 CWA 資料，在日期文字旁標記星號 (*)
-                React.createElement("div", { style: { fontSize: 11, fontWeight: d.isToday ? 700 : 500, color: d.isToday ? theme.accent : theme.sub } }, d.isToday ? "今天" : d.weekday),
-                React.createElement("div", { style: { fontSize: 10, color: theme.sub, marginTop: 1 } }, d.date, d.isCwa ? " *" : ""),
+                // (v2.2) 星期與日期字體放大
+                React.createElement("div", { style: { fontSize: 15, fontWeight: d.isToday ? 700 : 500, color: d.isToday ? theme.accent : theme.sub } }, d.isToday ? "今天" : d.weekday),
+                React.createElement("div", { style: { fontSize: 13, color: theme.sub, marginTop: 2 } }, d.date, d.isCwa ? " *" : ""),
                 
-                React.createElement(IconC, { size: sizes.weekIcon, color: theme.accent, style: { margin: short ? "4px 0" : "6px 0" } }),
-                React.createElement("div", { style: { fontSize: 10, color: theme.sub, lineHeight: 1.2, minHeight: short ? 0 : 24 } }, d.wxText),
+                React.createElement(IconC, { size: sizes.weekIcon, color: theme.accent, style: { margin: short ? "4px 0" : "8px 0" } }),
                 
-                // 統一使用 CloudRain 作為降雨機率的圖示
-                React.createElement("div", { style: { fontSize: 10, fontWeight: "500", color: d.rain != null && d.rain >= 30 ? theme.accent : theme.sub, margin: "4px 0 2px", display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }, title: "降雨機率" }, 
-                  React.createElement(CloudRain, { size: 10, color: theme.accent }), 
+                // (v2.2) 天氣敘述與降雨機率、溫度全面放大
+                React.createElement("div", { style: { fontSize: 13, color: theme.sub, lineHeight: 1.3, minHeight: short ? 0 : 28 } }, d.wxText),
+                React.createElement("div", { style: { fontSize: 15, fontWeight: "700", color: d.rain != null && d.rain >= 30 ? theme.accent : theme.sub, margin: "6px 0 4px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }, title: "降雨機率" }, 
+                  React.createElement(CloudRain, { size: 16, color: theme.accent }), 
                   d.rain != null ? (d.isCwa ? d.rain + '%' : `${d.rain}%`) : "—"
                 ),
-                React.createElement("div", { style: { fontSize: 11, fontWeight: 700 } }, d.hi, "° / ", d.lo, "°")
+                React.createElement("div", { style: { fontSize: 15, fontWeight: 700 } }, d.hi, "° / ", d.lo, "°")
               );
             }) : React.createElement("div", null)
           )

@@ -79,6 +79,27 @@
     align-items: center;
   }
   .location-item:hover { background: #f2f7fa; }
+
+  /* 行事曆日期格 hover 效果 */
+  .cal-day:hover { filter: brightness(0.96); }
+
+  /* 頁面切換指示點 */
+  .page-dots {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 500;
+  }
+  .page-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
 </style>
 </head>
 <body>
@@ -111,6 +132,13 @@ const RotateCcw = (p) => React.createElement(Icon, { ...p }, React.createElement
 const Search = (p) => React.createElement(Icon, { ...p }, React.createElement("circle", { cx: "11", cy: "11", r: "8" }), React.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" }));
 const Crosshair = (p) => React.createElement(Icon, { ...p }, React.createElement("circle", { cx: "12", cy: "12", r: "10" }), React.createElement("line", { x1: "22", y1: "12", x2: "18", y2: "12" }), React.createElement("line", { x1: "6", y1: "12", x2: "2", y2: "12" }), React.createElement("line", { x1: "12", y1: "6", x2: "12", y2: "2" }), React.createElement("line", { x1: "12", y1: "22", x2: "12", y2: "18" }));
 const XIcon = (p) => React.createElement(Icon, { ...p }, React.createElement("line", { x1: "18", y1: "6", x2: "6", y2: "18" }), React.createElement("line", { x1: "6", y1: "6", x2: "18", y2: "18" }));
+const ChevronLeft = (p) => React.createElement(Icon, { ...p }, React.createElement("polyline", { points: "15 18 9 12 15 6" }));
+const ChevronRight = (p) => React.createElement(Icon, { ...p }, React.createElement("polyline", { points: "9 18 15 12 9 6" }));
+const Plus = (p) => React.createElement(Icon, { ...p }, React.createElement("line", { x1: "12", y1: "5", x2: "12", y2: "19" }), React.createElement("line", { x1: "5", y1: "12", x2: "19", y2: "12" }));
+const Trash2 = (p) => React.createElement(Icon, { ...p }, React.createElement("polyline", { points: "3 6 5 6 21 6" }), React.createElement("path", { d: "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }));
+const CalendarIcon = (p) => React.createElement(Icon, { ...p }, React.createElement("rect", { x: "3", y: "4", width: "18", height: "18", rx: "2" }), React.createElement("line", { x1: "16", y1: "2", x2: "16", y2: "6" }), React.createElement("line", { x1: "8", y1: "2", x2: "8", y2: "6" }), React.createElement("line", { x1: "3", y1: "10", x2: "21", y2: "10" }));
+const Link2 = (p) => React.createElement(Icon, { ...p }, React.createElement("path", { d: "M9 17H7A5 5 0 0 1 7 7h2" }), React.createElement("path", { d: "M15 7h2a5 5 0 1 1 0 10h-2" }), React.createElement("line", { x1: "8", y1: "12", x2: "16", y2: "12" }));
+const CloudCheck = (p) => React.createElement(Icon, { ...p }, React.createElement("path", { d: "M17.5 19a4.5 4.5 0 0 0 .4-9 6 6 0 0 0-11.5-1.5A4.5 4.5 0 0 0 6.5 17" }), React.createElement("path", { d: "M9 15.5l2 2 4-4.5" }));
 
 /* ==========================================
  * 輔助邏輯：天氣代碼轉換與主題切換
@@ -272,6 +300,234 @@ function LocationModal({ isOpen, onClose, onSelectLocation, onUseGps }) {
 }
 
 /* ==========================================
+ * UI 組件：行事曆日期詳情／新增行程彈窗 (EventModal)
+ * ========================================== */
+function EventModal({ dateKey, events, onClose, onAdd, onDelete }) {
+  const [time, setTime] = useState("09:00");
+  const [title, setTitle] = useState("");
+
+  if (!dateKey) return null;
+  const dayEvents = (events[dateKey] || []).slice().sort((a, b) => a.time.localeCompare(b.time));
+  const dateObj = new Date(dateKey + "T00:00:00");
+  const label = dateObj.toLocaleDateString("zh-TW", { month: "long", day: "numeric", weekday: "long" });
+
+  const submit = () => {
+    if (!title.trim()) return;
+    onAdd(dateKey, { id: Date.now(), time, title: title.trim() });
+    setTitle("");
+  };
+
+  return React.createElement("div", { className: "modal-overlay", onClick: onClose },
+    React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation() },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+        React.createElement("span", { style: { fontWeight: "bold", fontSize: 16 } }, label),
+        React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", cursor: "pointer", padding: 4 } }, React.createElement(XIcon, { size: 18 }))
+      ),
+      React.createElement("div", { style: { marginTop: 14, marginBottom: 14, maxHeight: 200, overflowY: "auto" } },
+        dayEvents.length === 0
+          ? React.createElement("div", { style: { fontSize: 13, color: "#999", textAlign: "center", padding: "14px 0" } }, "這天還沒有行程")
+          : dayEvents.map((ev) => React.createElement("div", {
+              key: ev.id,
+              style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 8, background: "#f5f7f9", marginBottom: 6 }
+            },
+              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, minWidth: 0 } },
+                React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#1d6fa5", minWidth: 44, flexShrink: 0 } }, ev.time),
+                React.createElement("span", { style: { fontSize: 14, wordBreak: "break-word" } }, ev.title)
+              ),
+              React.createElement("button", {
+                onClick: () => onDelete(dateKey, ev.id),
+                style: { background: "none", border: "none", cursor: "pointer", padding: 4, color: "#c0392b", flexShrink: 0 }
+              }, React.createElement(Trash2, { size: 14 }))
+            ))
+      ),
+      React.createElement("div", { style: { display: "flex", gap: 8 } },
+        React.createElement("input", {
+          type: "time", value: time, onChange: (e) => setTime(e.target.value),
+          style: { padding: "8px 10px", borderRadius: 8, border: "1px solid #ccc", fontSize: 13, width: 110 }
+        }),
+        React.createElement("input", {
+          type: "text", placeholder: "新增行程...", value: title,
+          onChange: (e) => setTitle(e.target.value),
+          onKeyDown: (e) => { if (e.key === "Enter") submit(); },
+          style: { flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 8, border: "1px solid #ccc", fontSize: 13 }
+        }),
+        React.createElement("button", {
+          onClick: submit,
+          style: { padding: "8px 14px", borderRadius: 8, border: "none", background: "#1d6fa5", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }
+        }, React.createElement(Plus, { size: 16 }))
+      )
+    )
+  );
+}
+
+/* ==========================================
+ * UI 組件：行事曆月曆頁面 (CalendarPage)
+ * ========================================== */
+function CalendarPage({ theme, tier, events, onDayClick, syncGistId, syncStatus, onOpenSync }) {
+  const [viewDate, setViewDate] = useState(new Date());
+  const today = new Date();
+  const y = viewDate.getFullYear(), m = viewDate.getMonth();
+  const firstDay = new Date(y, m, 1);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const pad = (n) => String(n).padStart(2, "0");
+  const dateKeyFor = (d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+  const monthLabel = viewDate.toLocaleDateString("zh-TW", { year: "numeric", month: "long" });
+  const weekdayLabels = ["日", "一", "二", "三", "四", "五", "六"];
+  const maxW = tier === "lg" ? 640 : tier === "md" ? 560 : 420;
+  const cellFont = tier === "sm" ? 13 : 15;
+
+  return React.createElement("div", { style: { width: "100%", maxWidth: maxW, margin: "0 auto" } },
+    React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } },
+      React.createElement("button", {
+        onClick: onOpenSync,
+        title: syncGistId ? "已連接跨裝置同步" : "設定跨裝置同步",
+        style: {
+          display: "flex", alignItems: "center", gap: 4, fontSize: 11,
+          color: syncGistId ? "#2a8f4f" : theme.accent,
+          background: theme.card, border: `1px solid ${syncGistId ? "#2a8f4f66" : theme.accent + "44"}`,
+          borderRadius: 999, padding: "4px 10px", cursor: "pointer"
+        }
+      }, React.createElement(syncGistId ? CloudCheck : Link2, { size: 12 }), syncGistId ? (syncStatus === "syncing" ? "同步中…" : "已同步") : "跨裝置同步")
+    ),
+    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 } },
+      React.createElement("button", {
+        onClick: () => setViewDate(new Date(y, m - 1, 1)),
+        style: { background: theme.card, border: `1px solid ${theme.accent}33`, borderRadius: 999, padding: 7, cursor: "pointer", color: theme.text, display: "flex" }
+      }, React.createElement(ChevronLeft, { size: 18 })),
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+        React.createElement(CalendarIcon, { size: 20, color: theme.accent }),
+        React.createElement("span", { style: { fontSize: tier === "lg" ? 22 : 19, fontWeight: 700 } }, monthLabel)
+      ),
+      React.createElement("button", {
+        onClick: () => setViewDate(new Date(y, m + 1, 1)),
+        style: { background: theme.card, border: `1px solid ${theme.accent}33`, borderRadius: 999, padding: 7, cursor: "pointer", color: theme.text, display: "flex" }
+      }, React.createElement(ChevronRight, { size: 18 }))
+    ),
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 } },
+      weekdayLabels.map((w) => React.createElement("div", { key: w, style: { textAlign: "center", fontSize: 12, color: theme.sub, fontWeight: 600 } }, w))
+    ),
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 } },
+      cells.map((d, idx) => {
+        if (d === null) return React.createElement("div", { key: "e" + idx });
+        const dateKey = dateKeyFor(d);
+        const dayEvents = events[dateKey] || [];
+        const isToday = y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
+        return React.createElement("div", {
+          key: dateKey,
+          className: "cal-day",
+          onClick: () => onDayClick(dateKey),
+          style: {
+            aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            borderRadius: 10, cursor: "pointer", gap: 3,
+            background: isToday ? `${theme.accent}30` : theme.card,
+            border: isToday ? `1.5px solid ${theme.accent}` : `1px solid ${theme.accent}15`
+          }
+        },
+          React.createElement("span", { style: { fontSize: cellFont, fontWeight: isToday ? 700 : 500 } }, d),
+          dayEvents.length > 0 && React.createElement("div", { style: { display: "flex", gap: 2 } },
+            dayEvents.slice(0, 3).map((ev) => React.createElement("span", { key: ev.id, style: { width: 4, height: 4, borderRadius: "50%", background: theme.accent, display: "inline-block" } }))
+          )
+        );
+      })
+    )
+  );
+}
+
+/* ==========================================
+ * UI 組件：跨裝置同步彈窗 (SyncModal)
+ * 原理：把行事曆資料存成使用者自己 GitHub 帳號底下的一個私密 Gist，
+ * 多台裝置只要填入同一組「Token + 同步碼」就能讀寫同一份資料。
+ * ========================================== */
+function SyncModal({ isOpen, onClose, syncGistId, syncStatus, onConnectNew, onConnectExisting, onDisconnect }) {
+  const [mode, setMode] = useState("new"); // new | join
+  const [pat, setPat] = useState("");
+  const [gistIdInput, setGistIdInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [errMsg, setErrMsg] = useState("");
+
+  if (!isOpen) return null;
+
+  const connected = !!syncGistId;
+
+  const doConnectNew = async () => {
+    if (!pat.trim()) return;
+    setBusy(true); setErrMsg("");
+    const r = await onConnectNew(pat.trim());
+    setBusy(false);
+    if (!r.ok) setErrMsg("建立失敗，請確認 Token 是否正確、且已勾選 gist 權限");
+  };
+  const doConnectExisting = async () => {
+    if (!pat.trim() || !gistIdInput.trim()) return;
+    setBusy(true); setErrMsg("");
+    const r = await onConnectExisting(pat.trim(), gistIdInput.trim());
+    setBusy(false);
+    if (!r.ok) setErrMsg("連接失敗，請確認 Token 與同步碼是否正確");
+  };
+
+  return React.createElement("div", { className: "modal-overlay", onClick: onClose },
+    React.createElement("div", { className: "modal-card", onClick: (e) => e.stopPropagation() },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+        React.createElement("span", { style: { fontWeight: "bold", fontSize: 16 } }, "跨裝置同步行事曆"),
+        React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", cursor: "pointer", padding: 4 } }, React.createElement(XIcon, { size: 18 }))
+      ),
+
+      connected
+        ? React.createElement("div", { style: { marginTop: 14 } },
+            React.createElement("div", { style: { fontSize: 13, color: "#2a8f4f", display: "flex", alignItems: "center", gap: 6, marginBottom: 10 } },
+              React.createElement(CloudCheck, { size: 16 }), syncStatus === "syncing" ? "同步中…" : "已連接同步"
+            ),
+            React.createElement("div", { style: { fontSize: 12, color: "#666", marginBottom: 4 } }, "同步碼（在其他裝置輸入這組碼即可共用行程）："),
+            React.createElement("div", {
+              style: { fontFamily: "monospace", fontSize: 13, background: "#f2f4f6", padding: "8px 10px", borderRadius: 8, wordBreak: "break-all", userSelect: "all" }
+            }, syncGistId),
+            React.createElement("button", {
+              onClick: onDisconnect,
+              style: { marginTop: 14, width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #c0392b", background: "#fdf1f0", color: "#c0392b", cursor: "pointer", fontSize: 13 }
+            }, "解除此裝置的同步")
+          )
+        : React.createElement("div", { style: { marginTop: 14 } },
+            React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
+              React.createElement("button", {
+                onClick: () => setMode("new"),
+                style: { flex: 1, padding: "8px 0", borderRadius: 8, border: mode === "new" ? "1.5px solid #1d6fa5" : "1px solid #ddd", background: mode === "new" ? "#eaf3fa" : "#fff", color: mode === "new" ? "#1d6fa5" : "#555", cursor: "pointer", fontSize: 13, fontWeight: 600 }
+              }, "建立新同步"),
+              React.createElement("button", {
+                onClick: () => setMode("join"),
+                style: { flex: 1, padding: "8px 0", borderRadius: 8, border: mode === "join" ? "1.5px solid #1d6fa5" : "1px solid #ddd", background: mode === "join" ? "#eaf3fa" : "#fff", color: mode === "join" ? "#1d6fa5" : "#555", cursor: "pointer", fontSize: 13, fontWeight: 600 }
+              }, "輸入已有同步碼")
+            ),
+            React.createElement("div", { style: { fontSize: 12, color: "#666", lineHeight: 1.6, marginBottom: 10 } },
+              "需要一組 GitHub 個人 Token（僅需 gist 權限）。",
+              React.createElement("a", { href: "https://github.com/settings/tokens/new?description=DayArc&scopes=gist", target: "_blank", rel: "noreferrer", style: { color: "#1d6fa5" } }, "點此產生"),
+              "，資料會存在你自己 GitHub 帳號的私密 Gist 裡。"
+            ),
+            React.createElement("input", {
+              type: "password", placeholder: "貼上 GitHub Token (ghp_...)", value: pat,
+              onChange: (e) => setPat(e.target.value),
+              className: "search-input", style: { marginTop: 0 }
+            }),
+            mode === "join" && React.createElement("input", {
+              type: "text", placeholder: "貼上同步碼", value: gistIdInput,
+              onChange: (e) => setGistIdInput(e.target.value),
+              className: "search-input"
+            }),
+            errMsg && React.createElement("div", { style: { fontSize: 12, color: "#c0392b", marginBottom: 8 } }, errMsg),
+            React.createElement("button", {
+              onClick: mode === "new" ? doConnectNew : doConnectExisting,
+              disabled: busy,
+              style: { width: "100%", padding: "9px 12px", borderRadius: 8, border: "none", background: "#1d6fa5", color: "#fff", cursor: busy ? "default" : "pointer", fontSize: 13, fontWeight: 600, opacity: busy ? 0.6 : 1 }
+            }, busy ? "處理中…" : mode === "new" ? "建立同步碼" : "連接並同步")
+          )
+    )
+  );
+}
+
+/* ==========================================
  * 主組件 WeatherClock
  * ========================================== */
 function WeatherClock() {
@@ -286,7 +542,119 @@ function WeatherClock() {
   const [sourceMsg, setSourceMsg] = useState("Open-Meteo");
   const [lastUpdate, setLastUpdate] = useState("");
 
-  const lastGoodLoc = useRef(null);
+  // 頁面輪播：0 = 天氣時鐘頁, 1 = 行事曆頁
+  const [page, setPage] = useState(0);
+  const [events, setEvents] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("dayarc_events") || "{}"); }
+    catch (e) { return {}; }
+  });
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  useEffect(() => {
+    try { localStorage.setItem("dayarc_events", JSON.stringify(events)); } catch (e) {}
+  }, [events]);
+
+  const addEvent = useCallback((dateKey, ev) => {
+    setEvents((prev) => ({ ...prev, [dateKey]: [...(prev[dateKey] || []), ev] }));
+  }, []);
+  const deleteEvent = useCallback((dateKey, id) => {
+    setEvents((prev) => ({ ...prev, [dateKey]: (prev[dateKey] || []).filter((e) => e.id !== id) }));
+  }, []);
+
+  // 跨裝置同步：把行事曆存到使用者自己的 GitHub 私密 Gist
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [syncPAT, setSyncPAT] = useState(() => { try { return localStorage.getItem("dayarc_sync_pat") || ""; } catch (e) { return ""; } });
+  const [syncGistId, setSyncGistId] = useState(() => { try { return localStorage.getItem("dayarc_sync_gist") || ""; } catch (e) { return ""; } });
+  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | synced | error
+  const justPulled = useRef(false);
+  const GIST_FILE = "dayarc-events.json";
+
+  const pushToGist = useCallback(async (evts, pat, gistId) => {
+    if (!pat || !gistId) return;
+    setSyncStatus("syncing");
+    try {
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        method: "PATCH",
+        headers: { "Authorization": `token ${pat}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(evts, null, 2) } } })
+      });
+      if (!res.ok) throw new Error("push failed");
+      setSyncStatus("synced");
+    } catch (e) {
+      setSyncStatus("error");
+    }
+  }, []);
+
+  // events 有變動時，若已連接同步，就自動推送到 Gist（debounce）
+  useEffect(() => {
+    if (!syncGistId || !syncPAT) return;
+    if (justPulled.current) { justPulled.current = false; return; }
+    const t = setTimeout(() => pushToGist(events, syncPAT, syncGistId), 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [events]);
+
+  const connectNewSync = useCallback(async (pat) => {
+    setSyncStatus("syncing");
+    try {
+      const res = await fetch("https://api.github.com/gists", {
+        method: "POST",
+        headers: { "Authorization": `token ${pat}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ description: "DayArc 行事曆同步資料", public: false, files: { [GIST_FILE]: { content: JSON.stringify(events, null, 2) } } })
+      });
+      if (!res.ok) throw new Error("create failed");
+      const data = await res.json();
+      setSyncPAT(pat); setSyncGistId(data.id);
+      try { localStorage.setItem("dayarc_sync_pat", pat); localStorage.setItem("dayarc_sync_gist", data.id); } catch (e) {}
+      setSyncStatus("synced");
+      return { ok: true };
+    } catch (e) {
+      setSyncStatus("error");
+      return { ok: false };
+    }
+  }, [events]);
+
+  const connectExistingSync = useCallback(async (pat, gistId) => {
+    setSyncStatus("syncing");
+    try {
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers: { "Authorization": `token ${pat}` } });
+      if (!res.ok) throw new Error("fetch failed");
+      const data = await res.json();
+      const file = data.files && data.files[GIST_FILE];
+      const remoteEvents = file && file.content ? JSON.parse(file.content) : {};
+      justPulled.current = true;
+      setEvents(remoteEvents);
+      setSyncPAT(pat); setSyncGistId(gistId);
+      try { localStorage.setItem("dayarc_sync_pat", pat); localStorage.setItem("dayarc_sync_gist", gistId); } catch (e) {}
+      setSyncStatus("synced");
+      return { ok: true };
+    } catch (e) {
+      setSyncStatus("error");
+      return { ok: false };
+    }
+  }, []);
+
+  const disconnectSync = useCallback(() => {
+    setSyncPAT(""); setSyncGistId("");
+    try { localStorage.removeItem("dayarc_sync_pat"); localStorage.removeItem("dayarc_sync_gist"); } catch (e) {}
+    setSyncStatus("idle");
+  }, []);
+
+  // 固定時間輪流切換頁面（開啟任何彈窗時暫停輪播）
+  const PAGE_ROTATE_MS = 20000;
+  useEffect(() => {
+    if (isModalOpen || selectedDate || isSyncModalOpen) return;
+    const t = setInterval(() => setPage((p) => (p === 0 ? 1 : 0)), PAGE_ROTATE_MS);
+    return () => clearInterval(t);
+  }, [isModalOpen, selectedDate, isSyncModalOpen]);
+
+  // 上次成功定位的地點：從 localStorage 還原，讓「刷新後抓不到位置時退回上次定位點」在重新整理後依然有效
+  const lastGoodLoc = useRef((() => {
+    try {
+      const saved = localStorage.getItem("dayarc_last_loc");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) { return null; }
+  })());
 
   // 獨立：大時鐘每一秒更新
   useEffect(() => {
@@ -393,7 +761,8 @@ function WeatherClock() {
       setStatus("ready");
       
       setLastUpdate(new Date().toLocaleTimeString("zh-TW", { hour12: false, hour: '2-digit', minute: '2-digit' }));
-      lastGoodLoc.current = { lat, lon, name: customPlaceName };
+      lastGoodLoc.current = { lat, lon, name: customPlaceName || finalPlaceName || null };
+      try { localStorage.setItem("dayarc_last_loc", JSON.stringify(lastGoodLoc.current)); } catch (e) {}
 
     } catch (e) {
       console.error("更新天氣失敗", e);
@@ -470,7 +839,11 @@ function WeatherClock() {
       transition: "background 1.2s ease, color 1.2s ease", display: "flex", justifyContent: "center", boxSizing: "border-box"
     }
   },
-    React.createElement("div", { className: "shell-pad", style: { padding: tier === "lg" ? "40px" : tier === "md" ? "20px 28px" : "22px 16px 26px" } },
+    React.createElement("div", { className: "shell-pad", style: { padding: tier === "lg" ? "40px" : tier === "md" ? "20px 28px" : "22px 16px 26px", paddingBottom: 44 } },
+      page === 1 ? React.createElement(CalendarPage, {
+        theme, tier, events, onDayClick: setSelectedDate,
+        syncGistId, syncStatus, onOpenSync: () => setIsSyncModalOpen(true)
+      }) :
       React.createElement("div", {
         className: "grid-wrap",
         style: {
@@ -572,11 +945,43 @@ function WeatherClock() {
       )
     ),
 
+    React.createElement("div", { className: "page-dots" },
+      [0, 1].map((i) => React.createElement("button", {
+        key: i,
+        className: "page-dot",
+        onClick: () => setPage(i),
+        style: {
+          background: i === page ? theme.accent : theme.sub,
+          opacity: i === page ? 1 : 0.4,
+          transform: i === page ? "scale(1.3)" : "scale(1)"
+        },
+        "aria-label": i === 0 ? "天氣時鐘頁" : "行事曆頁"
+      }))
+    ),
+
     React.createElement(LocationModal, {
       isOpen: isModalOpen,
       onClose: () => setIsModalOpen(false),
       onSelectLocation: (loc) => loadWeather(loc.lat, loc.lon, loc.name),
       onUseGps: requestLocation
+    }),
+
+    React.createElement(EventModal, {
+      dateKey: selectedDate,
+      events: events,
+      onClose: () => setSelectedDate(null),
+      onAdd: addEvent,
+      onDelete: deleteEvent
+    }),
+
+    React.createElement(SyncModal, {
+      isOpen: isSyncModalOpen,
+      onClose: () => setIsSyncModalOpen(false),
+      syncGistId: syncGistId,
+      syncStatus: syncStatus,
+      onConnectNew: connectNewSync,
+      onConnectExisting: connectExistingSync,
+      onDisconnect: disconnectSync
     })
   );
 }

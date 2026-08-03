@@ -86,7 +86,7 @@
   /* 頁面切換指示點 */
   .page-dots {
     position: fixed;
-    bottom: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -94,7 +94,7 @@
     z-index: 500;
   }
   .page-dot {
-    width: 8px; height: 8px; border-radius: 50%;
+    width: 10px; height: 10px; border-radius: 50%;
     cursor: pointer;
     border: none;
     padding: 0;
@@ -363,7 +363,7 @@ function EventModal({ dateKey, events, onClose, onAdd, onDelete }) {
 /* ==========================================
  * UI 組件：行事曆月曆頁面 (CalendarPage)
  * ========================================== */
-function CalendarPage({ theme, tier, events, onDayClick, syncGistId, syncStatus, onOpenSync }) {
+function CalendarPage({ theme, tier, events, onDayClick, syncGistId, syncStatus, onOpenSync, short }) {
   const [viewDate, setViewDate] = useState(new Date());
   const today = new Date();
   const y = viewDate.getFullYear(), m = viewDate.getMonth();
@@ -378,8 +378,12 @@ function CalendarPage({ theme, tier, events, onDayClick, syncGistId, syncStatus,
   const dateKeyFor = (d) => `${y}-${pad(m + 1)}-${pad(d)}`;
   const monthLabel = viewDate.toLocaleDateString("zh-TW", { year: "numeric", month: "long" });
   const weekdayLabels = ["日", "一", "二", "三", "四", "五", "六"];
-  const maxW = tier === "lg" ? 640 : tier === "md" ? 560 : 420;
-  const cellFont = tier === "sm" ? 13 : 15;
+  const maxW = tier === "lg" ? 640 : tier === "md" ? 560 : 460;
+  const cellCfg = {
+    sm: { minH: short ? 44 : 60, numFont: 12, pillFont: 9.5, pillPad: "1px 3px", maxEvents: short ? 1 : 2, gap: 3 },
+    md: { minH: short ? 56 : 78, numFont: 14, pillFont: 11, pillPad: "2px 4px", maxEvents: short ? 2 : 3, gap: 4 },
+    lg: { minH: short ? 70 : 96, numFont: 15, pillFont: 12, pillPad: "2px 5px", maxEvents: short ? 2 : 3, gap: 5 }
+  }[tier];
 
   return React.createElement("div", { style: { width: "100%", maxWidth: maxW, margin: "0 auto" } },
     React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } },
@@ -390,47 +394,58 @@ function CalendarPage({ theme, tier, events, onDayClick, syncGistId, syncStatus,
           display: "flex", alignItems: "center", gap: 4, fontSize: 11,
           color: syncGistId ? "#2a8f4f" : theme.accent,
           background: theme.card, border: `1px solid ${syncGistId ? "#2a8f4f66" : theme.accent + "44"}`,
-          borderRadius: 999, padding: "4px 10px", cursor: "pointer"
+          borderRadius: 999, padding: "6px 10px", cursor: "pointer", minHeight: 30
         }
       }, React.createElement(syncGistId ? CloudCheck : Link2, { size: 12 }), syncGistId ? (syncStatus === "syncing" ? "同步中…" : "已同步") : "跨裝置同步")
     ),
-    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 } },
+    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
       React.createElement("button", {
         onClick: () => setViewDate(new Date(y, m - 1, 1)),
-        style: { background: theme.card, border: `1px solid ${theme.accent}33`, borderRadius: 999, padding: 7, cursor: "pointer", color: theme.text, display: "flex" }
+        style: { background: theme.card, border: `1px solid ${theme.accent}33`, borderRadius: 999, width: 34, height: 34, cursor: "pointer", color: theme.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
       }, React.createElement(ChevronLeft, { size: 18 })),
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-        React.createElement(CalendarIcon, { size: 20, color: theme.accent }),
-        React.createElement("span", { style: { fontSize: tier === "lg" ? 22 : 19, fontWeight: 700 } }, monthLabel)
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+        React.createElement(CalendarIcon, { size: tier === "sm" ? 18 : 20, color: theme.accent }),
+        React.createElement("span", { style: { fontSize: tier === "lg" ? 22 : tier === "md" ? 19 : 17, fontWeight: 700 } }, monthLabel)
       ),
       React.createElement("button", {
         onClick: () => setViewDate(new Date(y, m + 1, 1)),
-        style: { background: theme.card, border: `1px solid ${theme.accent}33`, borderRadius: 999, padding: 7, cursor: "pointer", color: theme.text, display: "flex" }
+        style: { background: theme.card, border: `1px solid ${theme.accent}33`, borderRadius: 999, width: 34, height: 34, cursor: "pointer", color: theme.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
       }, React.createElement(ChevronRight, { size: 18 }))
     ),
-    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 } },
-      weekdayLabels.map((w) => React.createElement("div", { key: w, style: { textAlign: "center", fontSize: 12, color: theme.sub, fontWeight: 600 } }, w))
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: cellCfg.gap, marginBottom: 6 } },
+      weekdayLabels.map((w) => React.createElement("div", { key: w, style: { textAlign: "center", fontSize: 11, color: theme.sub, fontWeight: 600 } }, w))
     ),
-    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 } },
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: cellCfg.gap } },
       cells.map((d, idx) => {
         if (d === null) return React.createElement("div", { key: "e" + idx });
         const dateKey = dateKeyFor(d);
-        const dayEvents = events[dateKey] || [];
+        const dayEvents = (events[dateKey] || []).slice().sort((a, b) => a.time.localeCompare(b.time));
         const isToday = y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
+        const shown = dayEvents.slice(0, cellCfg.maxEvents);
+        const extra = dayEvents.length - shown.length;
         return React.createElement("div", {
           key: dateKey,
           className: "cal-day",
           onClick: () => onDayClick(dateKey),
           style: {
-            aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            borderRadius: 10, cursor: "pointer", gap: 3,
+            minHeight: cellCfg.minH, display: "flex", flexDirection: "column", alignItems: "stretch",
+            borderRadius: 9, cursor: "pointer", gap: 2, padding: "3px 2px",
             background: isToday ? `${theme.accent}30` : theme.card,
-            border: isToday ? `1.5px solid ${theme.accent}` : `1px solid ${theme.accent}15`
+            border: isToday ? `1.5px solid ${theme.accent}` : `1px solid ${theme.accent}15`,
+            overflow: "hidden"
           }
         },
-          React.createElement("span", { style: { fontSize: cellFont, fontWeight: isToday ? 700 : 500 } }, d),
-          dayEvents.length > 0 && React.createElement("div", { style: { display: "flex", gap: 2 } },
-            dayEvents.slice(0, 3).map((ev) => React.createElement("span", { key: ev.id, style: { width: 4, height: 4, borderRadius: "50%", background: theme.accent, display: "inline-block" } }))
+          React.createElement("span", { style: { fontSize: cellCfg.numFont, fontWeight: isToday ? 700 : 500, textAlign: "center", flexShrink: 0 } }, d),
+          React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 1.5, minHeight: 0, overflow: "hidden" } },
+            shown.map((ev) => React.createElement("span", {
+              key: ev.id,
+              style: {
+                fontSize: cellCfg.pillFont, lineHeight: 1.25, padding: cellCfg.pillPad, borderRadius: 4,
+                background: `${theme.accent}26`, color: theme.text,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left"
+              }
+            }, ev.title)),
+            extra > 0 && React.createElement("span", { style: { fontSize: cellCfg.pillFont, color: theme.sub, textAlign: "left", paddingLeft: 2 } }, `+${extra}`)
           )
         );
       })
@@ -832,16 +847,29 @@ function WeatherClock() {
       return Cloud;
   }
 
+  const clampHeight = short && page === 0;
+
   return React.createElement("div", {
     style: {
-      height: short ? "100vh" : "auto", minHeight: "100vh", width: "100%", overflow: short ? "hidden" : "auto",
+      height: clampHeight ? "100vh" : "auto", minHeight: "100vh", width: "100%",
+      overflowY: clampHeight ? "hidden" : "auto", overflowX: "hidden",
       background: `linear-gradient(160deg, ${theme.from} 0%, ${theme.to} 100%)`, color: theme.text,
-      transition: "background 1.2s ease, color 1.2s ease", display: "flex", justifyContent: "center", boxSizing: "border-box"
+      transition: "background 1.2s ease, color 1.2s ease", display: "flex", justifyContent: "center", boxSizing: "border-box",
+      WebkitOverflowScrolling: "touch"
     }
   },
-    React.createElement("div", { className: "shell-pad", style: { padding: tier === "lg" ? "40px" : tier === "md" ? "20px 28px" : "22px 16px 26px", paddingBottom: 44 } },
+    React.createElement("div", {
+      className: "shell-pad",
+      style: {
+        padding: tier === "lg" ? "40px" : tier === "md" ? "20px 28px" : "18px 14px",
+        paddingTop: `calc(${tier === "lg" ? 40 : tier === "md" ? 20 : 18}px + env(safe-area-inset-top, 0px))`,
+        paddingBottom: `calc(48px + env(safe-area-inset-bottom, 0px))`,
+        paddingLeft: `calc(${tier === "lg" ? 40 : tier === "md" ? 28 : 14}px + env(safe-area-inset-left, 0px))`,
+        paddingRight: `calc(${tier === "lg" ? 40 : tier === "md" ? 28 : 14}px + env(safe-area-inset-right, 0px))`
+      }
+    },
       page === 1 ? React.createElement(CalendarPage, {
-        theme, tier, events, onDayClick: setSelectedDate,
+        theme, tier, events, onDayClick: setSelectedDate, short,
         syncGistId, syncStatus, onOpenSync: () => setIsSyncModalOpen(true)
       }) :
       React.createElement("div", {
@@ -856,19 +884,20 @@ function WeatherClock() {
           alignContent: twoColumn ? "center" : "start", height: twoColumn && short ? "100%" : "auto"
         }
       },
-        React.createElement("div", { className: "area-header", style: { display: "flex", alignItems: "center", gap: 6, opacity: 0.9, fontSize: tier === "lg" ? 15 : 13 } },
-          React.createElement(MapPin, { size: 15 }),
-          React.createElement("div", { style: { display: "flex", flexDirection: "column" } },
+        React.createElement("div", { className: "area-header", style: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: tier === "sm" ? 8 : 6, rowGap: 6, opacity: 0.9, fontSize: tier === "lg" ? 15 : 13 } },
+          React.createElement(MapPin, { size: 15, style: { flexShrink: 0 } }),
+          React.createElement("div", { style: { display: "flex", flexDirection: "column", minWidth: 0 } },
             React.createElement("span", { style: { fontWeight: "500" } }, place || (status === "locating" ? "定位中…" : status === "denied" ? "未取得權限" : "無法取得天氣")),
             coordsText && React.createElement("span", { style: { fontSize: 10, opacity: 0.75 } }, `定位點: ${coordsText}`)
           ),
           React.createElement("button", {
             onClick: () => setIsModalOpen(true),
-            style: { marginLeft: 8, display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: theme.accent, background: theme.card, border: `1px solid ${theme.accent}44`, borderRadius: 999, padding: "3px 10px", cursor: "pointer" }
+            style: { display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: theme.accent, background: theme.card, border: `1px solid ${theme.accent}44`, borderRadius: 999, padding: "6px 12px", minHeight: 30, cursor: "pointer" }
           }, React.createElement(Search, { size: 12 }), "搜尋地點"),
-          React.createElement("span", { style: { marginLeft: "auto", fontSize: 11, letterSpacing: 2, opacity: 0.7 } }, theme.name),
-          (status === "denied" || status === "error") && React.createElement("button", { onClick: requestLocation, style: { display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: theme.accent, background: "transparent", border: `1px solid ${theme.accent}55`, borderRadius: 999, padding: "3px 8px", cursor: "pointer" } }, React.createElement(RotateCcw, { size: 11 }), " 重試")
+          (status === "denied" || status === "error") && React.createElement("button", { onClick: requestLocation, style: { display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: theme.accent, background: "transparent", border: `1px solid ${theme.accent}55`, borderRadius: 999, padding: "6px 10px", minHeight: 30, cursor: "pointer" } }, React.createElement(RotateCcw, { size: 11 }), " 重試"),
+          React.createElement("span", { style: { marginLeft: "auto", fontSize: 11, letterSpacing: 2, opacity: 0.7, flexShrink: 0 } }, theme.name)
         ),
+
 
         React.createElement("div", { className: "area-clock" },
           React.createElement("div", { className: "clock-num", style: { fontSize: sizes.clock, fontWeight: 700, lineHeight: 1.05 } }, timeStr),

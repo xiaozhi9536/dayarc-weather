@@ -386,27 +386,25 @@ function CalendarPage({ theme, tier, events, onDayClick, syncGistId, syncStatus,
   }[tier];
 
   return React.createElement("div", { style: { width: "100%", maxWidth: maxW, margin: "0 auto" } },
-    React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: 8 } },
-      React.createElement("button", {
-        onClick: onOpenSync,
-        title: syncGistId ? "已連接跨裝置同步" : "設定跨裝置同步",
-        style: {
-          display: "flex", alignItems: "center", gap: 4, fontSize: 11,
-          color: syncGistId ? "#2a8f4f" : theme.accent,
-          background: theme.card, border: `1px solid ${syncGistId ? "#2a8f4f66" : theme.accent + "44"}`,
-          borderRadius: 999, padding: "6px 10px", cursor: "pointer", minHeight: 30
-        }
-      }, React.createElement(syncGistId ? CloudCheck : Link2, { size: 12 }), syncGistId ? (syncStatus === "syncing" ? "同步中…" : "已同步") : "跨裝置同步")
-    ),
-    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
+    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 14 } },
       React.createElement("button", {
         onClick: () => setViewDate(new Date(y, m - 1, 1)),
         style: { background: theme.card, border: `1px solid ${theme.accent}33`, borderRadius: 999, width: 34, height: 34, cursor: "pointer", color: theme.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
       }, React.createElement(ChevronLeft, { size: 18 })),
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-        React.createElement(CalendarIcon, { size: tier === "sm" ? 18 : 20, color: theme.accent }),
-        React.createElement("span", { style: { fontSize: tier === "lg" ? 22 : tier === "md" ? 19 : 17, fontWeight: 700 } }, monthLabel)
+      React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flex: "1 1 auto", minWidth: 0 } },
+        React.createElement(CalendarIcon, { size: tier === "sm" ? 18 : 20, color: theme.accent, style: { flexShrink: 0 } }),
+        React.createElement("span", { style: { fontSize: tier === "lg" ? 22 : tier === "md" ? 19 : 17, fontWeight: 700, whiteSpace: "nowrap" } }, monthLabel)
       ),
+      React.createElement("button", {
+        onClick: onOpenSync,
+        title: syncGistId ? "已連接跨裝置同步" : "設定跨裝置同步",
+        style: {
+          display: "flex", alignItems: "center", gap: 4, fontSize: 11, flexShrink: 0,
+          color: syncGistId ? "#2a8f4f" : theme.accent,
+          background: theme.card, border: `1px solid ${syncGistId ? "#2a8f4f66" : theme.accent + "44"}`,
+          borderRadius: 999, padding: tier === "sm" ? "6px 8px" : "6px 10px", height: 34, cursor: "pointer"
+        }
+      }, React.createElement(syncGistId ? CloudCheck : Link2, { size: 12 }), tier !== "sm" && (syncGistId ? (syncStatus === "syncing" ? "同步中…" : "已同步") : "同步")),
       React.createElement("button", {
         onClick: () => setViewDate(new Date(y, m + 1, 1)),
         style: { background: theme.card, border: `1px solid ${theme.accent}33`, borderRadius: 999, width: 34, height: 34, cursor: "pointer", color: theme.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
@@ -848,8 +846,27 @@ function WeatherClock() {
   }
 
   const clampHeight = short && page === 0;
+  const touchStartRef = useRef({ x: 0, y: 0, skip: false });
+
+  const handleTouchStart = (e) => {
+    const t = e.touches[0];
+    const skip = !!(e.target.closest && (e.target.closest(".day-scroll") || e.target.closest(".modal-overlay")));
+    touchStartRef.current = { x: t.clientX, y: t.clientY, skip };
+  };
+  const handleTouchEnd = (e) => {
+    const start = touchStartRef.current;
+    if (!start || start.skip) return;
+    if (isModalOpen || selectedDate || isSyncModalOpen) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x, dy = t.clientY - start.y;
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      setPage(dx < 0 ? 1 : 0);
+    }
+  };
 
   return React.createElement("div", {
+    onTouchStart: handleTouchStart,
+    onTouchEnd: handleTouchEnd,
     style: {
       height: clampHeight ? "100vh" : "auto", minHeight: "100vh", width: "100%",
       overflowY: clampHeight ? "hidden" : "auto", overflowX: "hidden",
